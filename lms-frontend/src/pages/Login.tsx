@@ -1,0 +1,118 @@
+import { useState } from 'react';
+import { BookOpenCheck, CircleAlert, Lock, Mail, MoveRight } from 'lucide-react';
+import students from '../assets/login-students.png';
+import { Button } from '../components/ui/Button';
+
+interface LoginProps {
+  onSubmit: (email: string, password: string) => Promise<void>;
+}
+
+export default function Login({ onSubmit }: LoginProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await onSubmit(email.trim(), password);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-4">
+      <div className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-sm border border-slate-200 bg-[#e2f2ee] shadow-sm">
+        <div className="flex h-16 items-center border-b border-emerald-800 bg-emerald-800 px-8">
+          <div className="flex items-center gap-3 text-white">
+            <div className="rounded-md bg-white/10 p-1.5">
+              <BookOpenCheck size={16} />
+            </div>
+            <span className="text-2xl font-extrabold tracking-tight">READSPHERE</span>
+          </div>
+        </div>
+
+        <div className="mx-auto grid max-w-[1280px] grid-cols-[1.6fr_1fr] gap-5 px-8 py-7">
+          <div className="overflow-hidden border border-slate-200 bg-white">
+            <img src={students} alt="Students" className="h-full w-full object-cover" />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <div className="mb-6 text-center">
+              <p className="mb-1 inline-flex items-center gap-2 text-emerald-700">
+                <BookOpenCheck size={19} />
+                <span className="text-4xl font-extrabold">READSPHERE</span>
+              </p>
+              <h1 className="text-4xl font-bold text-slate-800">Welcome Back</h1>
+              <p className="mt-1 text-sm text-slate-500">Access your library dashboard securely</p>
+            </div>
+
+            <label className="mb-4 block">
+              <span className="mb-1 block text-sm font-semibold text-slate-700">Email</span>
+              <span className="relative block">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-slate-100 pl-10 pr-3 text-sm outline-none ring-emerald-300 transition focus:bg-white focus:ring-2"
+                />
+              </span>
+            </label>
+
+            <label className="mb-6 block">
+              <div className="mb-1 flex items-center justify-between text-sm font-semibold text-slate-700">
+                <span>Password</span>
+                <button className="text-xs text-emerald-700" type="button">
+                  Forgot password?
+                </button>
+              </div>
+              <span className="relative block">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-slate-100 pl-10 pr-3 text-sm outline-none ring-emerald-300 transition focus:bg-white focus:ring-2"
+                />
+              </span>
+            </label>
+
+            <Button
+              className="h-11 w-full rounded-xl bg-emerald-500 text-sm hover:bg-emerald-600"
+              onClick={handleLogin}
+              disabled={loading}
+            >
+              Sign In
+              <MoveRight size={15} />
+            </Button>
+
+            {error ? <p className="mt-2 text-xs font-semibold text-rose-600">{error}</p> : null}
+
+            <div className="my-6 border-t border-slate-200" />
+
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <p className="mb-1 inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <CircleAlert size={14} className="text-emerald-700" />
+                Single Sign-On Enabled
+              </p>
+              <p className="text-xs text-slate-500">You will automatically be redirected to your dashboard based on your account role.</p>
+            </div>
+
+            <p className="mt-8 text-center text-xs text-slate-500">
+              Don't have an account? <span className="font-semibold text-emerald-700">Contact your Librarian</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
