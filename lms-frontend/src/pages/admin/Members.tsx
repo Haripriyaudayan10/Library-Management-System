@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Filter, Plus, Search, Users, Edit } from 'lucide-react';
+import { Filter, Plus, Search, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import AddMemberModal from './AddMemberModal';
+import EditMemberModal from './EditMemberModal';
 
 const members = [
   { id: 'LIB-8801', name: 'Alexander Wright', mail: 'a.wright@example.com', borrowed: 1, joined: 'May 12, 2023' },
@@ -14,10 +15,14 @@ const members = [
 ];
 
 export default function Members() {
+
   const [showAddMemberSlide, setShowAddMemberSlide] = useState(false);
+  const [editingMember, setEditingMember] = useState<any>(null);
 
   return (
     <div>
+
+      {/* Header */}
       <div className="mb-4 flex items-start justify-between">
         <h1 className="text-4xl font-bold text-slate-900">Members</h1>
 
@@ -30,11 +35,14 @@ export default function Members() {
         </Button>
       </div>
 
+      {/* Stats */}
       <div className="mb-4 max-w-md">
         <StatCard label="Total Members" value="2,842" icon={Users} />
       </div>
 
       <Card>
+
+        {/* Search */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <h2 className="text-2xl font-bold text-slate-800">Patron Records</h2>
 
@@ -56,8 +64,10 @@ export default function Members() {
           </div>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full text-xs">
+
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 text-left">Member ID</th>
@@ -72,6 +82,7 @@ export default function Members() {
             <tbody>
               {members.map((member) => (
                 <tr key={member.id} className="border-t border-slate-100">
+
                   <td className="px-4 py-3 font-semibold text-sky-700">
                     {member.id}
                   </td>
@@ -80,16 +91,19 @@ export default function Members() {
 
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
+
                       <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
 
                       <div>
                         <p className="font-semibold text-slate-800">
                           {member.name}
                         </p>
+
                         <p className="text-[11px] text-slate-500">
                           {member.mail}
                         </p>
                       </div>
+
                     </div>
                   </td>
 
@@ -103,71 +117,76 @@ export default function Members() {
                     {member.joined}
                   </td>
 
+                  {/* Edit Button */}
                   <td className="px-3 py-3">
-                    <Button variant="secondary" size="sm">
-                      <Edit size={12} /> Edit
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setEditingMember(member)}
+                    >
+                      Edit
                     </Button>
                   </td>
+
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
 
+        {/* Pagination */}
         <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+
           <p>Showing 1-5 of 2,842 members</p>
 
           <div className="flex items-center gap-1">
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              type="button"
-            >
+
+            <button className="rounded border border-slate-200 px-2 py-1">
               Previous
             </button>
 
-            <button
-              className="rounded bg-blue-700 px-2 py-1 text-white"
-              type="button"
-            >
+            <button className="rounded bg-blue-700 px-2 py-1 text-white">
               1
             </button>
 
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              type="button"
-            >
+            <button className="rounded border border-slate-200 px-2 py-1">
               2
             </button>
 
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              type="button"
-            >
+            <button className="rounded border border-slate-200 px-2 py-1">
               3
             </button>
 
             <span className="px-1">...</span>
 
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              type="button"
-            >
+            <button className="rounded border border-slate-200 px-2 py-1">
               569
             </button>
 
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              type="button"
-            >
+            <button className="rounded border border-slate-200 px-2 py-1">
               Next
             </button>
+
           </div>
+
         </div>
+
       </Card>
 
-      {showAddMemberSlide ? (
+      {/* Add Member Modal */}
+      {showAddMemberSlide && (
         <AddMemberModal onClose={() => setShowAddMemberSlide(false)} />
-      ) : null}
+      )}
+
+      {/* Edit Member Modal */}
+      {editingMember && (
+        <EditMemberModal
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
+        />
+      )}
+
     </div>
   );
 }
