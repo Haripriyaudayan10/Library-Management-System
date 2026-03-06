@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { AlertTriangle, RotateCcw, SquareLibrary } from 'lucide-react';
 import LoanCard from '../../components/common/LoanCard';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
+import ReserveBookModal from './ReserveBookModal';
 
 export default function Dashboard() {
+  const [showReserveModal, setShowReserveModal] = useState(false);
+
   return (
     <div>
       <div className="mb-4 flex items-start justify-between">
@@ -11,7 +15,9 @@ export default function Dashboard() {
           <h1 className="text-4xl font-bold text-slate-900">Welcome back, Hari 👋</h1>
           <p className="text-sm text-slate-700">You have read <span className="font-semibold">50 books</span> this year. Keep the momentum going!</p>
         </div>
-        <Button size="sm" className="bg-rose-500 hover:bg-rose-600">Reserve New Books</Button>
+        <Button size="sm" className="bg-rose-500 hover:bg-rose-600" onClick={() => setShowReserveModal(true)}>
+          Reserve New Books
+        </Button>
       </div>
 
       <div className="mb-5 grid grid-cols-3 gap-4">
@@ -27,6 +33,8 @@ export default function Dashboard() {
         <LoanCard title="Atomic Habits" author="James Clear" tag="Self-Help" due="DUE IN 10 DAYS" />
         <LoanCard title="The Great Gatsby" author="F. Scott Fitzgerald" tag="Classic" due="DUE IN 4 DAYS" />
       </div>
+
+      {showReserveModal ? <ReserveBookModal onClose={() => setShowReserveModal(false)} /> : null}
     </div>
   );
 }

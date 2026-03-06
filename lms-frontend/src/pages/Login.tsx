@@ -70,9 +70,6 @@ export default function Login({ onSubmit }: LoginProps) {
             <label className="mb-6 block">
               <div className="mb-1 flex items-center justify-between text-sm font-semibold text-slate-700">
                 <span>Password</span>
-                <button className="text-xs text-emerald-700" type="button">
-                  Forgot password?
-                </button>
               </div>
               <span className="relative block">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
