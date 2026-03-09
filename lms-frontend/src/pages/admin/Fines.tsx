@@ -20,12 +20,12 @@ export default function Fines() {
     <>
       <Card>
         <div className="border-b border-slate-200 px-5 py-4">
-          <h1 className="text-4xl font-bold text-slate-900">Fine Activity</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Fine Activity</h1>
         </div>
 
         <div className="border-b border-slate-200 px-5 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="relative min-w-80">
+            <label className="relative min-w-full sm:min-w-80">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input
                 className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
@@ -33,7 +33,7 @@ export default function Fines() {
               />
             </label>
 
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
               <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
                 <button className="rounded bg-emerald-700 px-3 py-1 font-semibold text-white">All</button>
                 <button className="rounded px-3 py-1 text-slate-500">Paid</button>
@@ -52,7 +52,7 @@ export default function Fines() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="w-full min-w-[760px] text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 text-left">Member Identity</th>

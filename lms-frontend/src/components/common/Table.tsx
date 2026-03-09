@@ -13,7 +13,7 @@ interface Props {
 export default function Table({ headers, rows }: Props) {
   return (
     <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-      <table className="min-w-full text-xs">
+      <table className="w-full min-w-[640px] text-xs">
         <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             {headers.map((header) => (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import ModalShell from '../../components/common/ModalShell';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 
 interface Props {
   member: {
@@ -17,18 +17,17 @@ export default function EditMemberModal({ member, onClose }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
-      <Card className="w-full max-w-lg overflow-hidden">
+    <ModalShell cardClassName="max-w-lg" zIndexClassName="z-40">
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
           <h1 className="text-xl font-bold text-slate-900">Edit Member</h1>
           <button onClick={onClose}>
             <X size={16} />
           </button>
         </div>
 
-        <div className="space-y-4 p-5 text-sm">
+        <div className="space-y-4 p-4 text-sm sm:p-5">
 
           {/* Member ID */}
           <div>
@@ -104,7 +103,7 @@ export default function EditMemberModal({ member, onClose }: Props) {
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="flex flex-col gap-2 pt-3 sm:flex-row sm:justify-end">
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
@@ -116,7 +115,6 @@ export default function EditMemberModal({ member, onClose }: Props) {
 
         </div>
 
-      </Card>
-    </div>
+    </ModalShell>
   );
 }

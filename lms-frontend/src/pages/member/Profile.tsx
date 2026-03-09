@@ -7,12 +7,12 @@ export default function Profile() {
     <div>
       <div className="mb-2 text-xs font-semibold text-slate-600">Settings &gt; User Profile</div>
 
-      <Card className="mb-6 p-6">
+      <Card className="mb-6 p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 sm:h-24 sm:w-24" />
             <div>
-              <h1 className="text-5xl font-bold text-slate-900">Hari Sankar</h1>
+              <h1 className="text-3xl font-bold text-slate-900 sm:text-5xl">Hari Sankar</h1>
               <p className="mt-1 text-xs font-semibold text-slate-500">User ID: LE-2021-9402</p>
               <p className="mt-6 max-w-xl text-sm italic text-slate-500">"Avid reader of speculative fiction and historical biographies. Librarian's Choice award recipient 2023."</p>
               <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-400">Joined</p>
@@ -24,8 +24,8 @@ export default function Profile() {
         </div>
       </Card>
 
-      <Card className="max-w-md p-5">
-        <h2 className="text-4xl font-bold text-slate-900">Contact Details</h2>
+      <Card className="max-w-full p-5 sm:max-w-md">
+        <h2 className="text-2xl font-bold text-slate-900 sm:text-4xl">Contact Details</h2>
         <p className="mb-5 text-sm text-slate-500">How the library reaches you.</p>
 
         <div className="space-y-4 text-sm">

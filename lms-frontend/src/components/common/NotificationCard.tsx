@@ -10,7 +10,7 @@ interface Props {
 export default function NotificationCard({ title, description, meta }: Props) {
   return (
     <Card className="mb-3 border-emerald-100 p-4">
-      <div className="mb-2 flex items-start justify-between gap-3">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-800">{title}</p>
           <p className="text-xs text-slate-500">{description}</p>
@@ -18,7 +18,7 @@ export default function NotificationCard({ title, description, meta }: Props) {
         <p className="text-[10px] font-semibold uppercase text-slate-400">{meta}</p>
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Button size="sm" variant="ghost">
           Dismiss
         </Button>

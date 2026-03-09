@@ -1,8 +1,8 @@
 import { CircleAlert, X } from 'lucide-react';
 import DateBox from '../../components/common/DateBox';
 import Identity from '../../components/common/Identity';
+import ModalShell from '../../components/common/ModalShell';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 
 interface Props {
   onClose: () => void;
@@ -10,8 +10,7 @@ interface Props {
 
 export default function FineModal({ onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl overflow-hidden">
+    <ModalShell cardClassName="max-w-2xl" zIndexClassName="z-40">
 
         <div className="flex items-start justify-between border-b border-slate-200 bg-emerald-50 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -20,7 +19,7 @@ export default function FineModal({ onClose }: Props) {
             </div>
 
             <div>
-              <h1 className="text-4xl font-bold text-slate-900">Fine Details</h1>
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Fine Details</h1>
               <p className="text-xs text-slate-500">
                 Transaction ID: #FIN-90241-XB
               </p>
@@ -37,7 +36,7 @@ export default function FineModal({ onClose }: Props) {
         </div>
 
         <div className="space-y-5 p-5 text-xs">
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
 
             <div>
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -71,7 +70,7 @@ export default function FineModal({ onClose }: Props) {
               Loan Timeline
             </p>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <DateBox label="Loan Date" value="Oct 01, 2024" />
               <DateBox label="Due Date" value="Oct 15, 2024" />
               <DateBox label="Returned On" value="Oct 22, 2024" danger />
@@ -95,7 +94,7 @@ export default function FineModal({ onClose }: Props) {
                 Total Fine Amount
               </p>
 
-              <p className="text-4xl font-bold text-slate-900">
+              <p className="text-2xl font-bold text-slate-900 sm:text-4xl">
                 ₹35.00
               </p>
             </div>
@@ -113,7 +112,6 @@ export default function FineModal({ onClose }: Props) {
           </div>
         </div>
 
-      </Card>
-    </div>
+    </ModalShell>
   );
 }

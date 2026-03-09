@@ -23,8 +23,8 @@ export default function Members() {
     <div>
 
       {/* Header */}
-      <div className="mb-4 flex items-start justify-between">
-        <h1 className="text-4xl font-bold text-slate-900">Members</h1>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Members</h1>
 
         <Button
           size="sm"
@@ -36,7 +36,7 @@ export default function Members() {
       </div>
 
       {/* Stats */}
-      <div className="mb-4 max-w-md">
+      <div className="mb-4 max-w-full sm:max-w-md">
         <StatCard label="Total Members" value="2,842" icon={Users} />
       </div>
 
@@ -47,13 +47,13 @@ export default function Members() {
           <h2 className="text-2xl font-bold text-slate-800">Patron Records</h2>
 
           <div className="flex items-center gap-2">
-            <label className="relative">
+            <label className="relative w-full sm:w-auto">
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
                 size={14}
               />
               <input
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
+                className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
                 placeholder="Search by ID or name..."
               />
             </label>
@@ -66,7 +66,7 @@ export default function Members() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="w-full min-w-[760px] text-xs">
 
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
@@ -136,7 +136,7 @@ export default function Members() {
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
           <p>Showing 1-5 of 2,842 members</p>
 

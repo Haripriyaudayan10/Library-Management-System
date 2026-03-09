@@ -15,27 +15,27 @@ export default function Reservations() {
     <div>
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Reservations</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Reservations</h1>
           <p className="text-sm text-slate-700">
             Monitor and process book requests, availability dates, and pickups.
           </p>
         </div>
       </div>
 
-      <div className="mb-4 max-w-[280px]">
+      <div className="mb-4 max-w-full sm:max-w-[280px]">
         <StatCard label="Active Reservations" value="124" icon={Clock3} />
       </div>
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Active Queue</h2>
+            <h2 className="text-xl font-bold text-slate-800 sm:text-2xl">Active Queue</h2>
             <p className="text-xs text-slate-500">
               Live tracking of all reservation states and deadlines.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
             <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs">
               <button className="rounded px-2 py-1 font-semibold text-slate-700">All</button>
               <button className="rounded px-2 py-1 text-slate-500">Ready</button>
@@ -43,10 +43,10 @@ export default function Reservations() {
               <button className="rounded px-2 py-1 text-slate-500">Overdue</button>
             </div>
 
-            <label className="relative">
+            <label className="relative w-full sm:w-auto">
               <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
               <input
-                className="h-8 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
+                className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
                 placeholder="Filter by member name..."
               />
             </label>
@@ -54,7 +54,7 @@ export default function Reservations() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="w-full min-w-[760px] text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 text-left">ID</th>
@@ -106,7 +106,7 @@ export default function Reservations() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>Showing 5 of 124 reservations</p>
 
           <div className="flex items-center gap-1">

@@ -22,18 +22,18 @@ const donut = {
 export default function Dashboard() {
   return (
     <div>
-      <h1 className="text-4xl font-bold text-slate-900">Operational Overview</h1>
+      <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Operational Overview</h1>
       <p className="mb-4 text-sm text-slate-700">Welcome back. Here's what's happening in your library today.</p>
 
       <div className="mb-5 max-w-[320px]">
         <StatCard label="Total Revenue" value="Rs.100" icon={CircleDollarSign} />
       </div>
 
-      <div className="grid grid-cols-[1.7fr_0.9fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.7fr_0.9fr]">
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">Recent Activity</h2>
+              <h2 className="text-xl font-bold text-slate-800 sm:text-2xl">Recent Activity</h2>
               <p className="text-xs text-slate-500">Latest transactions and member actions</p>
             </div>
         

@@ -1,6 +1,6 @@
 import { UserPlus, X } from 'lucide-react';
+import ModalShell from '../../components/common/ModalShell';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 
 interface AddMemberModalProps {
   onClose: () => void;
@@ -8,14 +8,13 @@ interface AddMemberModalProps {
 
 export default function AddMemberModal({ onClose }: AddMemberModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-sm">
-      <Card className="w-full max-w-2xl overflow-hidden">
+    <ModalShell cardClassName="max-w-2xl" zIndexClassName="z-50">
         <div className="flex items-center justify-between border-b border-slate-200 bg-emerald-50 px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="rounded-xl bg-emerald-700 p-2 text-white">
               <UserPlus size={16} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Member Details</h2>
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Member Details</h2>
           </div>
           <button type="button" className="text-slate-600" onClick={onClose}>
             <X size={16} />
@@ -24,7 +23,7 @@ export default function AddMemberModal({ onClose }: AddMemberModalProps) {
 
         <div className="space-y-4 p-5 text-xs">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Member Information</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label>
               <p className="mb-1 font-semibold text-slate-700">Full Name</p>
               <input className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3" placeholder="Enter Full Name" />
@@ -35,7 +34,7 @@ export default function AddMemberModal({ onClose }: AddMemberModalProps) {
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label>
               <p className="mb-1 font-semibold text-slate-700">Phone Number</p>
               <input className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3" placeholder="Enter Phone Number" />
@@ -53,7 +52,7 @@ export default function AddMemberModal({ onClose }: AddMemberModalProps) {
 
           <div className="border-t border-slate-200 pt-4">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Account Credentials</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label>
                 <p className="mb-1 font-semibold text-slate-700">User Name</p>
                 <input className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3" placeholder="Enter User Name" />
@@ -76,7 +75,6 @@ export default function AddMemberModal({ onClose }: AddMemberModalProps) {
             <Button>Add Member</Button>
           </div>
         </div>
-      </Card>
-    </div>
+    </ModalShell>
   );
 }

@@ -1,7 +1,7 @@
 import { BellRing, X } from 'lucide-react';
+import ModalShell from '../../components/common/ModalShell';
 import NotificationCard from '../../components/common/NotificationCard';
 import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
 
 interface Props {
   onClose: () => void;
@@ -9,8 +9,7 @@ interface Props {
 
 export default function Notifications({ onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/35 backdrop-blur-sm">
-      <Card className="w-full max-w-md p-5">
+    <ModalShell cardClassName="max-w-md p-4 sm:p-5" overlayClassName="bg-slate-900/35" zIndexClassName="z-40">
 
         <div className="mb-4 flex items-start justify-between border-b border-slate-200 pb-3">
           <div className="flex items-center gap-3">
@@ -23,7 +22,7 @@ export default function Notifications({ onClose }: Props) {
                 My Alerts • 4 Actions Required
               </p>
 
-              <h1 className="text-3xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
                 Pending Resolutions
               </h1>
             </div>
@@ -67,7 +66,7 @@ export default function Notifications({ onClose }: Props) {
           meta="5H AGO"
         />
 
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
 
           {/* CLOSE BUTTON */}
           <Button
@@ -82,7 +81,6 @@ export default function Notifications({ onClose }: Props) {
           </Button>
 
         </div>
-      </Card>
-    </div>
+    </ModalShell>
   );
 }

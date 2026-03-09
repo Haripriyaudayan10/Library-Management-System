@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { PropsWithChildren } from 'react';
 import type { NavItem } from './Sidebar';
 import { Sidebar } from './Sidebar';
@@ -25,15 +26,45 @@ export function AppShell({
   onOpenNotifications,
   onOpenProfile,
 }: PropsWithChildren<AppShellProps>) {
+
+  const [mobileSidebar, setMobileSidebar] = useState(false);
+
   return (
-    <div className="min-h-screen bg-slate-100 p-4">
-      <div className="flex min-h-[calc(100vh-2rem)] overflow-hidden rounded-sm border border-slate-200 bg-white shadow-sm">
-        <Sidebar items={navItems} activeKey={activeKey} onSelect={onSelect} onLogout={onLogout} />
+    <div className="min-h-screen bg-slate-100">
+
+      {/* Removed overflow-hidden */}
+      <div className="flex min-h-screen bg-white">
+
+        <Sidebar
+          items={navItems}
+          activeKey={activeKey}
+          onSelect={(key) => {
+            onSelect(key);
+            setMobileSidebar(false);
+          }}
+          onLogout={onLogout}
+          mobileOpen={mobileSidebar}
+          closeMobile={() => setMobileSidebar(false)}
+        />
+
         <div className="flex flex-1 flex-col">
-          <TopBar user={user} role={role} onOpenNotifications={onOpenNotifications} onOpenProfile={onOpenProfile} />
-          <main className="flex-1 bg-[#7be2c8] p-6">{children}</main>
+
+          <TopBar
+            user={user}
+            role={role}
+            onOpenNotifications={onOpenNotifications}
+            onOpenProfile={onOpenProfile}
+            onToggleSidebar={() => setMobileSidebar(!mobileSidebar)}
+          />
+
+          <main className="flex-1 bg-[#7be2c8] p-3 sm:p-6 overflow-x-auto">
+            {children}
+          </main>
+
         </div>
+
       </div>
+
     </div>
   );
 }

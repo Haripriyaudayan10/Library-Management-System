@@ -9,7 +9,7 @@ interface Props {
 export default function Toolbar({ chips }: Props) {
   return (
     <Card className="mt-4 flex flex-wrap items-center gap-2 p-3">
-      <label className="relative min-w-64 flex-1">
+      <label className="relative min-w-full flex-1 sm:min-w-64">
         <Search
           className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"
           size={14}

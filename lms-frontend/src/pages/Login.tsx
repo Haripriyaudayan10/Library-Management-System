@@ -29,27 +29,27 @@ export default function Login({ onSubmit }: LoginProps) {
   return (
     <div className="min-h-screen bg-slate-100 p-4">
       <div className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-sm border border-slate-200 bg-[#e2f2ee] shadow-sm">
-        <div className="flex h-16 items-center border-b border-emerald-800 bg-emerald-800 px-8">
+        <div className="flex h-14 items-center border-b border-emerald-800 bg-emerald-800 px-4 sm:h-16 sm:px-8">
           <div className="flex items-center gap-3 text-white">
             <div className="rounded-md bg-white/10 p-1.5">
               <BookOpenCheck size={16} />
             </div>
-            <span className="text-2xl font-extrabold tracking-tight">READSPHERE</span>
+            <span className="text-xl font-extrabold tracking-tight sm:text-2xl">READSPHERE</span>
           </div>
         </div>
 
-        <div className="mx-auto grid max-w-[1280px] grid-cols-[1.6fr_1fr] gap-5 px-8 py-7">
-          <div className="overflow-hidden border border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[1.6fr_1fr] lg:gap-5 lg:px-8 lg:py-7">
+          <div className="hidden overflow-hidden border border-slate-200 bg-white lg:block">
             <img src={students} alt="Students" className="h-full w-full object-cover" />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
             <div className="mb-6 text-center">
               <p className="mb-1 inline-flex items-center gap-2 text-emerald-700">
                 <BookOpenCheck size={19} />
-                <span className="text-4xl font-extrabold">READSPHERE</span>
+                <span className="text-2xl font-extrabold sm:text-4xl">READSPHERE</span>
               </p>
-              <h1 className="text-4xl font-bold text-slate-800">Welcome Back</h1>
+              <h1 className="text-3xl font-bold text-slate-800 sm:text-4xl">Welcome Back</h1>
               <p className="mt-1 text-sm text-slate-500">Access your library dashboard securely</p>
             </div>
 

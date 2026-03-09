@@ -11,7 +11,7 @@ interface Props {
 
 export default function LoanCard({ title, author, tag, due }: Props) {
   return (
-    <Card className="flex max-w-[310px] items-center gap-3 p-3">
+    <Card className="flex w-full items-center gap-3 p-3">
       <div className="h-20 w-16 rounded-md bg-gradient-to-br from-slate-200 to-slate-400" />
 
       <div className="flex-1">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Clock3, Filter, MoreHorizontal, Plus, Search } from 'lucide-react';
+import { BookOpen, Clock3, Filter, Plus, Search } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
@@ -58,9 +58,9 @@ export default function Loans() {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">Loan Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Loan Management</h1>
           <p className="text-sm text-slate-700">
             Track book circulation and manage returns across the library.
           </p>
@@ -75,7 +75,7 @@ export default function Loans() {
         </Button>
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active Loans" value="12" icon={BookOpen} />
         <StatCard label="Overdue Items" value="2" icon={Clock3} />
         <StatCard label="Due Today" value="1" icon={Clock3} />
@@ -83,7 +83,7 @@ export default function Loans() {
 
       <Card className="mb-4 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <label className="relative min-w-72 flex-1">
+          <label className="relative min-w-full flex-1 sm:min-w-72">
             <Search
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
               size={14}
@@ -97,16 +97,12 @@ export default function Loans() {
           <Button variant="secondary" size="sm">
             <Filter size={13} /> Filter
           </Button>
-
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal size={13} />
-          </Button>
         </div>
       </Card>
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="min-w-full text-xs">
+          <table className="w-full min-w-[760px] text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-2 text-left">Borrower ↕</th>
@@ -114,7 +110,6 @@ export default function Loans() {
                 <th className="px-3 py-2 text-left">Loan Date</th>
                 <th className="px-3 py-2 text-left">Due Date ↕</th>
                 <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2 text-left">Actions</th>
               </tr>
             </thead>
 
@@ -161,15 +156,13 @@ export default function Loans() {
                       {row.status}
                     </span>
                   </td>
-
-                  <td className="px-3 py-3 text-slate-400">...</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>Showing 1-5 of 1,284 records</p>
 
           <div className="flex items-center gap-1">
