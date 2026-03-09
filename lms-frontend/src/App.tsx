@@ -92,6 +92,7 @@ function App() {
         name: backendData.name,
         role: roleUpper,
         email,
+        profileImageUrl: backendData.profileImageUrl,
       };
       setAuthenticated(backend);
     } catch {
@@ -102,6 +103,19 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
+  };
+
+  const handleProfileUpdated = (patch: { name?: string; profileImageUrl?: string }) => {
+    setSession((prev) => {
+      if (!prev) return prev;
+      const next = {
+        ...prev,
+        name: patch.name ?? prev.name,
+        profileImageUrl: patch.profileImageUrl ?? prev.profileImageUrl,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   const renderScreen = () => {
@@ -119,6 +133,7 @@ function App() {
           }}
           user={session.name}
           role="Admin"
+          profileImageUrl={session.profileImageUrl}
           onLogout={handleLogout}
         >
           {screen === 'admin-dashboard' && <AdminDashboard />}
@@ -142,12 +157,13 @@ function App() {
         onSelect={(key) => setScreen(key as Screen)}
         user={session.name}
         role="Member"
+        profileImageUrl={session.profileImageUrl}
         onLogout={handleLogout}
         onOpenNotifications={() => setScreen('member-notifications')}
         onOpenProfile={() => setScreen('member-profile')}
       >
         {screen === 'member-dashboard' && <MemberDashboard />}
-        {screen === 'member-profile' && <Profile />}
+        {screen === 'member-profile' && <Profile onProfileUpdated={handleProfileUpdated} />}
         {screen === 'member-notifications' && (
   <Notifications onClose={() => setScreen('member-dashboard')} />
 )}

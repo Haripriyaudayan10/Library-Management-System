@@ -1,29 +1,44 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Filter, Plus, Search, Users } from 'lucide-react';
+import { Filter, Plus, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import AddMemberModal from './AddMemberModal';
 import EditMemberModal from './EditMemberModal';
 import { getMembers, type MemberItem } from '../../services/memberService';
+import { getLoans, type LoanItem } from '../../services/loanService';
+import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
 
 interface MemberRow {
   id: string;
   name: string;
   mail: string;
   borrowed: number;
-  joined: string;
+  profileImageUrl?: string;
 }
 
 export default function Members() {
 
   const [members, setMembers] = useState<MemberItem[]>([]);
+  const [loans, setLoans] = useState<LoanItem[]>([]);
   const [totalMembers, setTotalMembers] = useState(0);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const [showAddMemberSlide, setShowAddMemberSlide] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const borrowedCountByMember = useMemo(() => {
+    const activeLoanStatuses = new Set(['ACTIVE', 'ISSUED', 'REISSUED', 'OVERDUE']);
+    return loans.reduce<Record<string, number>>((acc, loan) => {
+      const userId = loan.user?.userId;
+      const status = String(loan.status ?? '').toUpperCase();
+      if (!userId || !activeLoanStatuses.has(status)) return acc;
+      acc[userId] = (acc[userId] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [loans]);
 
   const memberRows = useMemo<MemberRow[]>(
     () =>
@@ -31,19 +46,47 @@ export default function Members() {
         id: member.userid,
         name: member.name,
         mail: member.email,
-        borrowed: 0,
-        joined: '-',
+        borrowed: borrowedCountByMember[member.userid] ?? 0,
+        profileImageUrl: member.profileImageUrl,
       })),
-    [members],
+    [borrowedCountByMember, members],
   );
+
+  const memberSuggestions = useMemo<SearchSuggestionItem[]>(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return [];
+    return memberRows
+      .filter((member) =>
+        member.name.toLowerCase().includes(q) ||
+        member.id.toLowerCase().includes(q) ||
+        member.mail.toLowerCase().includes(q),
+      )
+      .slice(0, 10)
+      .map((member) => ({
+        id: member.id,
+        label: `${member.name} (${member.mail})`,
+        value: member.name,
+      }));
+  }, [memberRows, searchTerm]);
+
+  const filteredMemberRows = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return memberRows;
+    return memberRows.filter((member) =>
+      member.name.toLowerCase().includes(q) ||
+      member.id.toLowerCase().includes(q) ||
+      member.mail.toLowerCase().includes(q),
+    );
+  }, [memberRows, searchTerm]);
 
   const loadMembers = async (pageNo: number) => {
     try {
-      const data = await getMembers(pageNo, 10);
-      setMembers(data.content);
-      setTotalMembers(data.totalElements);
-      setTotalPages(Math.max(data.totalPages, 1));
-      setPage(data.page);
+      const [memberPage, loanData] = await Promise.all([getMembers(pageNo, 10), getLoans()]);
+      setMembers(memberPage.content);
+      setLoans(loanData);
+      setTotalMembers(memberPage.totalElements);
+      setTotalPages(Math.max(memberPage.totalPages, 1));
+      setPage(memberPage.page);
     } catch (error) {
       console.error('Failed to load members', error);
     }
@@ -81,16 +124,14 @@ export default function Members() {
           <h2 className="text-2xl font-bold text-slate-800">Patron Records</h2>
 
           <div className="flex items-center gap-2">
-            <label className="relative w-full sm:w-auto">
-              <Search
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                size={14}
-              />
-              <input
-                className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
-                placeholder="Search by ID or name..."
-              />
-            </label>
+            <SearchSuggestInput
+              className="w-full sm:w-[260px]"
+              value={searchTerm}
+              placeholder="Search by ID or name..."
+              suggestions={memberSuggestions}
+              onChange={setSearchTerm}
+              onSelect={(item) => setSearchTerm(item.value)}
+            />
 
             <Button variant="secondary" size="sm">
               <Filter size={13} />
@@ -108,13 +149,12 @@ export default function Members() {
                 <th className="hidden w-6 px-2 py-2 text-left text-xs md:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">↕</th>
                 <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member Information</th>
                 <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Borrowed</th>
-                <th className="hidden px-2 py-2 text-left text-xs sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Joined On</th>
                 <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Edit</th>
               </tr>
             </thead>
 
             <tbody>
-              {memberRows.map((member) => (
+              {filteredMemberRows.map((member) => (
                 <tr key={member.id} className="border-t border-slate-100">
 
                   <td className="px-2 py-2 text-xs font-semibold text-sky-700 md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
@@ -126,7 +166,15 @@ export default function Members() {
                   <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <div className="flex items-center gap-2">
 
-                      <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                      {member.profileImageUrl ? (
+                        <img
+                          src={member.profileImageUrl}
+                          alt={member.name}
+                          className="h-7 w-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                      )}
 
                       <div className="min-w-0">
                         <p className="max-w-[120px] break-words whitespace-normal font-semibold text-slate-800 md:max-w-[180px]">
@@ -145,10 +193,6 @@ export default function Members() {
                     <span className="rounded-full bg-slate-100 px-2 py-0.5">
                       {member.borrowed}
                     </span>
-                  </td>
-
-                  <td className="hidden px-2 py-2 text-xs text-slate-600 sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
-                    {member.joined}
                   </td>
 
                   {/* Edit Button */}
@@ -172,7 +216,7 @@ export default function Members() {
         {/* Pagination */}
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
-          <p>Showing {memberRows.length} of {totalMembers} members</p>
+          <p>Showing {filteredMemberRows.length} of {totalMembers} members</p>
 
           <div className="flex items-center gap-1">
 
@@ -204,16 +248,24 @@ export default function Members() {
 
       {/* Add Member Modal */}
       {showAddMemberSlide && (
-        <AddMemberModal onClose={() => {
-          setShowAddMemberSlide(false);
-          void loadMembers(page);
-        }} />
+        <AddMemberModal
+          onClose={() => {
+            setShowAddMemberSlide(false);
+            void loadMembers(page);
+          }}
+          onSuccess={() => {
+            void loadMembers(page);
+          }}
+        />
       )}
 
       {/* Edit Member Modal */}
       {editingMember && (
         <EditMemberModal
           member={editingMember}
+          onSuccess={() => {
+            void loadMembers(page);
+          }}
           onClose={() => {
             setEditingMember(null);
             void loadMembers(page);

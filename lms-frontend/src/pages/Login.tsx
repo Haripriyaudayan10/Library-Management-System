@@ -41,7 +41,14 @@ export default function Login({ onSubmit }: LoginProps) {
 
         <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-4 px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[1.6fr_1fr] lg:gap-5 lg:px-8 lg:py-7">
           <div className="hidden overflow-hidden border border-slate-200 bg-white lg:block">
-            <img src={students} alt="Students" className="h-full w-full object-cover" />
+            <img
+              src={students}
+              alt="Students"
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = '/login-students.png';
+              }}
+            />
           </div>
 
           <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" onSubmit={handleLogin}>

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock3, Filter } from 'lucide-react';
+import { Clock3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import { getReservations, type ReservationItem } from '../../services/reservationService';
+import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
 
 interface ReservationRow {
   id: string;
   title: string;
   isbn: string;
   member: string;
+  memberProfileImageUrl?: string;
   code: string;
   requested: string;
   status: string;
@@ -23,6 +25,7 @@ function formatDate(value?: string): string {
 
 export default function Reservations() {
   const [reservations, setReservations] = useState<ReservationItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadReservations = async () => {
     try {
@@ -44,12 +47,40 @@ export default function Reservations() {
         title: reservation.bookTitle ?? 'Unknown Book',
         isbn: `BOOK ID: ${reservation.bookId ?? '-'}`,
         member: reservation.userName ?? 'Member',
+        memberProfileImageUrl: reservation.userProfileImageUrl,
         code: `MEM-${reservation.userId ?? '-'}`,
         requested: formatDate(reservation.reservationDate),
         status: String(reservation.status ?? 'WAITING'),
       })),
     [reservations],
   );
+
+  const reservationSuggestions = useMemo<SearchSuggestionItem[]>(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return [];
+    return rows
+      .filter((row) =>
+        row.member.toLowerCase().includes(q) ||
+        row.title.toLowerCase().includes(q) ||
+        row.code.toLowerCase().includes(q),
+      )
+      .slice(0, 10)
+      .map((row) => ({
+        id: row.id,
+        label: `${row.member} • ${row.title}`,
+        value: row.member,
+      }));
+  }, [rows, searchTerm]);
+
+  const filteredRows = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) =>
+      row.member.toLowerCase().includes(q) ||
+      row.title.toLowerCase().includes(q) ||
+      row.code.toLowerCase().includes(q),
+    );
+  }, [rows, searchTerm]);
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -83,13 +114,14 @@ export default function Reservations() {
               <button className="rounded px-2 py-1 text-slate-500">Overdue</button>
             </div>
 
-            <label className="relative w-full sm:w-auto">
-              <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
-              <input
-                className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
-                placeholder="Filter by member name..."
-              />
-            </label>
+            <SearchSuggestInput
+              className="w-full sm:w-[260px]"
+              value={searchTerm}
+              placeholder="Filter by member name..."
+              suggestions={reservationSuggestions}
+              onChange={setSearchTerm}
+              onSelect={(item) => setSearchTerm(item.value)}
+            />
           </div>
         </div>
 
@@ -106,7 +138,7 @@ export default function Reservations() {
             </thead>
 
             <tbody>
-              {rows.map((row) => (
+              {filteredRows.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100">
                   <td className="truncate px-2 py-2 text-[11px] font-semibold text-slate-500 md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">{row.id}</td>
 
@@ -117,7 +149,15 @@ export default function Reservations() {
 
                   <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                      {row.memberProfileImageUrl ? (
+                        <img
+                          src={row.memberProfileImageUrl}
+                          alt={row.member}
+                          className="h-6 w-6 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                      )}
                       <div className="min-w-0">
                         <p className="max-w-[120px] break-words whitespace-normal font-semibold text-slate-700 md:max-w-[160px]">{row.member}</p>
                         <p className="max-w-[120px] break-words whitespace-normal text-[10px] text-slate-500 md:max-w-[160px]">{row.code}</p>
@@ -147,7 +187,7 @@ export default function Reservations() {
         </div>
 
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>Showing {rows.length} reservations</p>
+          <p>Showing {filteredRows.length} reservations</p>
 
           <div className="flex items-center gap-1">
             <button className="rounded border border-slate-200 px-2 py-1">Previous</button>

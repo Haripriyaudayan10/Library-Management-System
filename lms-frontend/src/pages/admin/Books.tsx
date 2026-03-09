@@ -4,7 +4,6 @@ import {
   Filter,
   MoreHorizontal,
   Plus,
-  Search,
   Trash2,
   Book,
   BookOpen,
@@ -18,6 +17,7 @@ import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
 import api from '../../services/api';
 import { deleteBook, type BookItem } from '../../services/bookService';
 import { getLoans } from '../../services/loanService';
+import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
 
 interface BookRow {
   bookId: number;
@@ -36,6 +36,21 @@ interface AddBookForm {
   authorName: string;
   category: string;
   numberOfCopies: number;
+}
+
+interface CategoryResponse {
+  categoryid: number;
+  name?: string;
+}
+
+interface CreatedBookResponse {
+  bookId: number;
+  title: string;
+  authorName: string;
+  category?: {
+    categoryid?: number;
+    name?: string;
+  };
 }
 
 const initialAddBookForm: AddBookForm = {
@@ -57,6 +72,31 @@ function extractTotalCount(data: unknown, fallback: number): number {
   return typeof maybePage?.totalElements === 'number' ? maybePage.totalElements : fallback;
 }
 
+async function resolveCategoryId(categoryName: string, existingBooks: BookItem[]): Promise<number> {
+  const match = existingBooks.find(
+    (book) => book.category?.name?.toLowerCase() === categoryName.toLowerCase(),
+  );
+
+  if (match?.category?.categoryid) {
+    return match.category.categoryid;
+  }
+
+  const existingCategoryResponse = await api.get('/api/admin/books', {
+    params: { category: categoryName, page: 0, size: 1 },
+  });
+  const existingCategoryBooks = extractBooksData(existingCategoryResponse.data);
+  const existingCategoryId = existingCategoryBooks[0]?.category?.categoryid;
+  if (existingCategoryId) {
+    return existingCategoryId;
+  }
+
+  const { data } = await api.post<CategoryResponse>('/api/admin/books', null, {
+    params: { categoryName },
+  });
+
+  return data.categoryid;
+}
+
 export default function Books({ searchQuery = '' }: BooksProps) {
 
   const [books, setBooks] = useState<BookItem[]>([]);
@@ -68,6 +108,13 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [showAddBookPage, setShowAddBookPage] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<BookRow | null>(null);
   const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([
+    'Fiction',
+    'Sci-Fi',
+    'Self-Help',
+    'Literary Fiction',
+  ]);
 
   const bookRows = useMemo<BookRow[]>(
     () =>
@@ -80,6 +127,23 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       })),
     [books],
   );
+
+  const bookSuggestions = useMemo<SearchSuggestionItem[]>(() => {
+    const q = localSearch.trim().toLowerCase();
+    if (!q) return [];
+    return bookRows
+      .filter((book) =>
+        book.title.toLowerCase().includes(q) ||
+        book.author.toLowerCase().includes(q) ||
+        book.genre.toLowerCase().includes(q),
+      )
+      .slice(0, 10)
+      .map((book) => ({
+        id: String(book.bookId),
+        label: `${book.title} (${book.author})`,
+        value: book.title,
+      }));
+  }, [bookRows, localSearch]);
 
   const loadLoanStats = async () => {
     const loans = await getLoans();
@@ -99,6 +163,10 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
     setBooks(booksData);
     setTotalBooks(extractTotalCount(response.data, booksData.length));
+    const fetchedCategories = booksData
+      .map((book) => book.category?.name?.trim())
+      .filter((name): name is string => Boolean(name));
+    setCategoryOptions((prev) => Array.from(new Set([...prev, ...fetchedCategories])));
   };
 
   const searchBooks = async (query: string) => {
@@ -106,6 +174,8 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       await loadAllBooks();
       return;
     }
+
+    const normalizedQuery = query.trim().toLowerCase();
 
     const authorResponse = await api.get('/api/admin/books', {
       params: { author: query, page: 0, size: 50 },
@@ -123,7 +193,20 @@ export default function Books({ searchQuery = '' }: BooksProps) {
     });
 
     const categoryBooksData = extractBooksData(categoryResponse.data);
-    setBooks(categoryBooksData);
+    if (categoryBooksData.length > 0) {
+      setBooks(categoryBooksData);
+      return;
+    }
+
+    const allBooksResponse = await api.get('/api/admin/books', { params: { page: 0, size: 50 } });
+    const allBooksData = extractBooksData(allBooksResponse.data);
+    const localMatches = allBooksData.filter((book) => {
+      const title = (book.title ?? '').toLowerCase();
+      const author = (book.authorName ?? '').toLowerCase();
+      const category = (book.category?.name ?? '').toLowerCase();
+      return title.includes(normalizedQuery) || author.includes(normalizedQuery) || category.includes(normalizedQuery);
+    });
+    setBooks(localMatches);
   };
 
   const refreshPageData = async (query = '') => {
@@ -165,10 +248,15 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   };
 
   const handleSaveBook = async () => {
-    const payload: AddBookForm = {
+    const selectedCategory =
+      addBookForm.category === '__new__'
+        ? newCategoryName.trim()
+        : addBookForm.category.trim();
+
+    const payload = {
       title: addBookForm.title.trim(),
       authorName: addBookForm.authorName.trim(),
-      category: addBookForm.category.trim(),
+      category: selectedCategory,
       numberOfCopies: Math.max(1, Number(addBookForm.numberOfCopies) || 1),
     };
 
@@ -177,9 +265,26 @@ export default function Books({ searchQuery = '' }: BooksProps) {
     }
 
     try {
-      await api.post('/api/admin/books', payload);
+      const categoryId = await resolveCategoryId(payload.category, books);
+
+      const { data: createdBook } = await api.post<CreatedBookResponse>('/api/admin/books', {
+        title: payload.title,
+        authorName: payload.authorName,
+        category: { categoryid: categoryId },
+      });
+
+      for (let i = 0; i < payload.numberOfCopies; i += 1) {
+        await api.post('/api/admin/copies', null, {
+          params: { bookId: createdBook.bookId },
+        });
+      }
+
       setShowAddBookPage(false);
       setAddBookForm(initialAddBookForm);
+      setNewCategoryName('');
+      setCategoryOptions((prev) =>
+        payload.category ? Array.from(new Set([...prev, payload.category])) : prev,
+      );
       setLocalSearch('');
       setSubmittedSearch('');
       await refreshPageData();
@@ -244,15 +349,37 @@ export default function Books({ searchQuery = '' }: BooksProps) {
                 <select
                   className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-600"
                   value={addBookForm.category}
-                  onChange={(e) => setAddBookForm((prev) => ({ ...prev, category: e.target.value }))}
+                  onChange={(e) => {
+                    const nextCategory = e.target.value;
+                    setAddBookForm((prev) => ({ ...prev, category: nextCategory }));
+                    if (nextCategory !== '__new__') {
+                      setNewCategoryName('');
+                    }
+                  }}
                 >
                   <option></option>
-                  <option>Fiction</option>
-                  <option>Sci-Fi</option>
-                  <option>Self-Help</option>
-                  <option>Literary Fiction</option>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                  <option value="__new__">+ Add New Category</option>
                 </select>
               </label>
+
+              {addBookForm.category === '__new__' ? (
+                <label className="block">
+                  <p className="mb-1 font-semibold text-slate-700">
+                    New Category Name
+                  </p>
+                  <input
+                    className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Enter new category"
+                  />
+                </label>
+              ) : null}
 
             </div>
 
@@ -265,12 +392,14 @@ export default function Books({ searchQuery = '' }: BooksProps) {
                 Number of Copies
               </p>
               <input
+                type="number"
+                min={1}
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
-                value={addBookForm.numberOfCopies}
+                value={addBookForm.numberOfCopies || ''}
                 onChange={(e) =>
                   setAddBookForm((prev) => ({
                     ...prev,
-                    numberOfCopies: Number(e.target.value) || 1,
+                    numberOfCopies: e.target.value === '' ? 0 : Number(e.target.value),
                   }))
                 }
               />
@@ -334,28 +463,23 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
         <div className="flex flex-wrap items-center gap-2">
 
-          <label className="relative min-w-full flex-1 sm:min-w-72">
-
-            <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={14}
-            />
-
-            <input
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const nextQuery = localSearch.trim();
-                  setSubmittedSearch(nextQuery);
-                  void refreshPageData(nextQuery);
-                }
-              }}
-              className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
-              placeholder="Search by title, author & category"
-            />
-
-          </label>
+          <SearchSuggestInput
+            className="min-w-full flex-1 sm:min-w-72"
+            value={localSearch}
+            placeholder="Search by title, author & category"
+            suggestions={bookSuggestions}
+            onChange={setLocalSearch}
+            onEnter={() => {
+              const nextQuery = localSearch.trim();
+              setSubmittedSearch(nextQuery);
+              void refreshPageData(nextQuery);
+            }}
+            onSelect={(item) => {
+              setLocalSearch(item.value);
+              setSubmittedSearch(item.value);
+              void refreshPageData(item.value);
+            }}
+          />
 
           <Button variant="secondary" size="sm">
             <Filter size={13} />

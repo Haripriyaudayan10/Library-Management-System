@@ -4,6 +4,7 @@ export interface ReservationItem {
   reservationId: number;
   userId: string;
   userName: string;
+  userProfileImageUrl?: string;
   bookId: number;
   bookTitle: string;
   reservationDate: string;

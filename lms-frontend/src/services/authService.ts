@@ -10,6 +10,7 @@ export interface LoginResponse {
   userId: string | number;
   name: string;
   role: string;
+  profileImageUrl?: string;
 }
 
 export async function login(email: string, password: string): Promise<LoginResponse> {

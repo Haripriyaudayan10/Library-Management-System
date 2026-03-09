@@ -4,6 +4,7 @@ export interface FineLoanUser {
   userId?: string;
   name?: string;
   email?: string;
+  profileImageUrl?: string;
 }
 
 export interface FineLoan {

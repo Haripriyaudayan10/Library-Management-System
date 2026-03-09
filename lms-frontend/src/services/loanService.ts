@@ -16,6 +16,7 @@ export interface LoanUser {
   userId?: string;
   name?: string;
   email?: string;
+  profileImageUrl?: string;
 }
 
 export interface LoanItem {
@@ -31,4 +32,16 @@ export interface LoanItem {
 export async function getLoans(): Promise<LoanItem[]> {
   const { data } = await api.get<LoanItem[]>('/api/admin/loans');
   return Array.isArray(data) ? data : [];
+}
+
+export async function createLoan(copyId: number, userId: string): Promise<LoanItem> {
+  const { data } = await api.post<LoanItem>('/api/admin/loans', null, {
+    params: { copyId, userId },
+  });
+  return data;
+}
+
+export async function returnLoan(loanId: number): Promise<LoanItem> {
+  const { data } = await api.put<LoanItem>(`/api/admin/loans/${loanId}/return`);
+  return data;
 }

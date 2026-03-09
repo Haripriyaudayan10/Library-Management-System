@@ -6,6 +6,7 @@ export interface LoginResult {
   name: string;
   role: UserRole;
   email: string;
+  profileImageUrl?: string;
   isDummy?: boolean;
 }
 
@@ -19,6 +20,7 @@ interface BackendLoginResponse {
   userId: string;
   name: string;
   role: string;
+  profileImageUrl?: string;
 }
 
 export const DUMMY_ADMIN = {
@@ -59,6 +61,7 @@ export async function loginWithBackend(body: LoginRequestBody): Promise<LoginRes
     name: data.name,
     role: roleUpper,
     email: body.email,
+    profileImageUrl: data.profileImageUrl,
   };
 }
 

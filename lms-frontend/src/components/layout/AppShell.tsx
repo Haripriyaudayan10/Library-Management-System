@@ -10,6 +10,7 @@ interface AppShellProps {
   onSelect: (key: string) => void;
   user: string;
   role: string;
+  profileImageUrl?: string;
   onLogout?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -23,6 +24,7 @@ export function AppShell({
   onSelect,
   user,
   role,
+  profileImageUrl,
   onLogout,
   onOpenNotifications,
   onOpenProfile,
@@ -54,6 +56,7 @@ export function AppShell({
           <TopBar
             user={user}
             role={role}
+            profileImageUrl={profileImageUrl}
             onOpenNotifications={onOpenNotifications}
             onOpenProfile={onOpenProfile}
             onToggleSidebar={() => setMobileSidebar(!mobileSidebar)}

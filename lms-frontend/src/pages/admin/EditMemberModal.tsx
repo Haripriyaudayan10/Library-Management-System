@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import ModalShell from '../../components/common/ModalShell';
 import { Button } from '../../components/ui/Button';
+import { deleteMember, updateMember } from '../../services/memberService';
 
 interface Props {
   member: {
@@ -10,11 +11,34 @@ interface Props {
     mail: string;
   };
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function EditMemberModal({ member, onClose }: Props) {
+export default function EditMemberModal({ member, onClose, onSuccess }: Props) {
+  const [name, setName] = useState(member.name);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    try {
+      await updateMember(member.id, name.trim());
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update member', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteMember(member.id);
+      onSuccess?.();
+      onClose();
+    } catch (error) {
+      console.error('Failed to delete member', error);
+    }
+  };
 
   return (
     <ModalShell cardClassName="max-w-lg" zIndexClassName="z-40">
@@ -43,7 +67,8 @@ export default function EditMemberModal({ member, onClose }: Props) {
           <div>
             <label className="text-xs font-semibold text-slate-500">Full Name</label>
             <input
-              defaultValue={member.name}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
             />
           </div>
@@ -104,11 +129,14 @@ export default function EditMemberModal({ member, onClose }: Props) {
 
           {/* Buttons */}
           <div className="flex flex-col gap-2 pt-3 sm:flex-row sm:justify-end">
+            <Button variant="danger" onClick={() => void handleDelete()}>
+              Delete Member
+            </Button>
             <Button variant="secondary" onClick={onClose}>
               Cancel
             </Button>
 
-            <Button>
+            <Button onClick={() => void handleSave()}>
               Save Changes
             </Button>
           </div>

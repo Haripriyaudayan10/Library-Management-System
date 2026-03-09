@@ -3,6 +3,7 @@ import { Bell, Menu } from 'lucide-react';
 interface TopBarProps {
   user: string;
   role: string;
+  profileImageUrl?: string;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onToggleSidebar?: () => void;
@@ -12,6 +13,7 @@ interface TopBarProps {
 export function TopBar({
   user,
   role,
+  profileImageUrl,
   onOpenNotifications,
   onOpenProfile,
   onToggleSidebar,
@@ -63,9 +65,13 @@ export function TopBar({
           </div>
 
           <button
-            className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-200 to-rose-300"
+            className="h-7 w-7 overflow-hidden rounded-full bg-gradient-to-br from-amber-200 to-rose-300"
             onClick={isMember ? onOpenProfile : undefined}
-          />
+          >
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt={user} className="h-full w-full object-cover" />
+            ) : null}
+          </button>
 
         </div>
 
