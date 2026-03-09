@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import NewLoanModal from './NewLoanModal';
-import { getLoans, returnLoan, type LoanItem } from '../../services/loanService';
+import { getLoans, reissueLoan, returnLoan, type LoanItem } from '../../services/loanService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
 
 interface LoanRow {
@@ -102,6 +102,28 @@ export default function Loans() {
       await loadLoans();
     } catch (error) {
       console.error('Failed to return loan', error);
+    }
+  };
+
+  const handleReissue = async (loanId: number) => {
+    const loan = loans.find((item) => item.loanId === loanId);
+    if (!loan) return;
+
+    const today = new Date();
+    const due = loan.dueDate ? new Date(loan.dueDate) : new Date();
+    const base =
+      Number.isNaN(due.getTime()) || due.getTime() < today.getTime()
+        ? today
+        : due;
+    const nextDue = new Date(base);
+    nextDue.setDate(nextDue.getDate() + 14);
+    const newDueDate = nextDue.toISOString().slice(0, 10);
+
+    try {
+      await reissueLoan(loanId, newDueDate);
+      await loadLoans();
+    } catch (error) {
+      console.error('Failed to reissue loan', error);
     }
   };
 
@@ -210,13 +232,21 @@ export default function Loans() {
                     >
                       {row.status}
                     </span>
-                    {row.status === 'ACTIVE' ? (
-                      <button
-                        className="ml-2 rounded border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
-                        onClick={() => void handleReturn(row.id)}
-                      >
-                        Return
-                      </button>
+                    {row.status === 'ACTIVE' || row.status === 'REISSUED' ? (
+                      <>
+                        <button
+                          className="ml-2 rounded border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                          onClick={() => void handleReissue(row.id)}
+                        >
+                          Reissue
+                        </button>
+                        <button
+                          className="ml-2 rounded border border-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                          onClick={() => void handleReturn(row.id)}
+                        >
+                          Return
+                        </button>
+                      </>
                     ) : null}
                   </td>
                 </tr>

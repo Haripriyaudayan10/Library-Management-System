@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import { getAdminDashboard, type AdminDashboardStats } from '../../services/dashboardService';
 import api from '../../services/api';
+import { getFines, type FineItem } from '../../services/fineService';
 
 interface ActivityRow {
   name: string;
@@ -50,15 +51,17 @@ export default function Dashboard() {
 
   const [loans, setLoans] = useState<LoanItem[]>([]);
   const [books, setBooks] = useState<DashboardBook[]>([]);
+  const [fines, setFines] = useState<FineItem[]>([]);
   const [chartData, setChartData] = useState<ChartDatum[]>([]);
 
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [dashboardData, loansResponse, booksResponse] = await Promise.all([
+        const [dashboardData, loansResponse, booksResponse, finesData] = await Promise.all([
           getAdminDashboard(),
           api.get('/api/admin/loans'),
           api.get('/api/admin/books'),
+          getFines(),
         ]);
 
         setStats(dashboardData);
@@ -73,6 +76,7 @@ export default function Dashboard() {
 
         setLoans(loansData);
         setBooks(booksData);
+        setFines(finesData);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
       }
@@ -142,6 +146,12 @@ export default function Dashboard() {
     return { background: `conic-gradient(${segments})` };
   }, [chartData]);
 
+  const totalRevenue = useMemo(
+    () =>
+      fines.reduce((sum, fine) => (fine.paid ? sum + Number(fine.amount ?? 0) : sum), 0),
+    [fines],
+  );
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">
@@ -155,7 +165,7 @@ export default function Dashboard() {
       <div className="mb-5 max-w-[320px]">
         <StatCard
           label="Total Revenue"
-          value={`Rs.${stats.totalBooks}`}
+          value={`Rs.${totalRevenue.toFixed(2)}`}
           icon={CircleDollarSign}
         />
       </div>

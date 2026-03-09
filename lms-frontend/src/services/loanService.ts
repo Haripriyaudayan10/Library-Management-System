@@ -45,3 +45,10 @@ export async function returnLoan(loanId: number): Promise<LoanItem> {
   const { data } = await api.put<LoanItem>(`/api/admin/loans/${loanId}/return`);
   return data;
 }
+
+export async function reissueLoan(loanId: number, newDueDate: string): Promise<LoanItem> {
+  const { data } = await api.patch<LoanItem>(`/api/admin/loans/${loanId}`, null, {
+    params: { newDueDate },
+  });
+  return data;
+}

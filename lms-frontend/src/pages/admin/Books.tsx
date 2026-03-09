@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronRight,
-  Filter,
-  MoreHorizontal,
   Plus,
   Trash2,
   Book,
@@ -102,6 +100,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [localSearch, setLocalSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalBooks, setTotalBooks] = useState(0);
   const [activeLoans, setActiveLoans] = useState(0);
   const [overdueItems, setOverdueItems] = useState(0);
@@ -144,6 +143,21 @@ export default function Books({ searchQuery = '' }: BooksProps) {
         value: book.title,
       }));
   }, [bookRows, localSearch]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(bookRows.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedBookRows = useMemo(
+    () => bookRows.slice(startIndex, endIndex),
+    [bookRows, startIndex, endIndex],
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const loadLoanStats = async () => {
     const loans = await getLoans();
@@ -216,6 +230,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       if (query.trim()) {
         await searchBooks(query);
       }
+      setCurrentPage(1);
     } catch (error) {
       console.error('Failed to load books', error);
     }
@@ -481,18 +496,6 @@ export default function Books({ searchQuery = '' }: BooksProps) {
             }}
           />
 
-          <Button variant="secondary" size="sm">
-            <Filter size={13} />
-          </Button>
-
-          <Button variant="secondary" size="sm">Fiction</Button>
-          <Button variant="secondary" size="sm">Sci-Fi</Button>
-          <Button variant="secondary" size="sm">+3 More</Button>
-
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal size={13} />
-          </Button>
-
         </div>
 
       </Card>
@@ -506,7 +509,8 @@ export default function Books({ searchQuery = '' }: BooksProps) {
           </h2>
 
           <p className="text-xs font-semibold text-slate-500">
-            Displaying {bookRows.length} items
+            Displaying {bookRows.length === 0 ? 0 : startIndex + 1}-
+            {Math.min(endIndex, bookRows.length)} of {bookRows.length} items
           </p>
 
         </div>
@@ -528,7 +532,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
             <tbody>
 
-              {bookRows.map((book) => (
+              {paginatedBookRows.map((book) => (
 
                 <tr key={book.bookId} className="border-t border-slate-100">
 
@@ -567,6 +571,28 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
           </table>
 
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3 text-xs">
+          <button
+            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+          >
+            Previous
+          </button>
+
+          <span className="rounded bg-blue-700 px-2 py-1 text-white">
+            {currentPage}
+          </span>
+
+          <button
+            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
+            disabled={currentPage >= totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+          >
+            Next
+          </button>
         </div>
 
       </Card>
