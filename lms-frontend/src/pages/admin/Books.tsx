@@ -15,7 +15,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
-import { deleteBook, getBooks, type BookItem } from '../../services/bookService';
+import api from '../../services/api';
+import { deleteBook, type BookItem } from '../../services/bookService';
 import { getLoans } from '../../services/loanService';
 
 interface BookRow {
@@ -26,14 +27,47 @@ interface BookRow {
   status: string;
 }
 
-export default function Books() {
+interface BooksProps {
+  searchQuery?: string;
+}
+
+interface AddBookForm {
+  title: string;
+  authorName: string;
+  category: string;
+  numberOfCopies: number;
+}
+
+const initialAddBookForm: AddBookForm = {
+  title: '',
+  authorName: '',
+  category: '',
+  numberOfCopies: 1,
+};
+
+function extractBooksData(data: unknown): BookItem[] {
+  if (Array.isArray(data)) return data as BookItem[];
+
+  const maybePage = data as { content?: BookItem[] } | undefined;
+  return maybePage?.content ?? [];
+}
+
+function extractTotalCount(data: unknown, fallback: number): number {
+  const maybePage = data as { totalElements?: number } | undefined;
+  return typeof maybePage?.totalElements === 'number' ? maybePage.totalElements : fallback;
+}
+
+export default function Books({ searchQuery = '' }: BooksProps) {
 
   const [books, setBooks] = useState<BookItem[]>([]);
+  const [localSearch, setLocalSearch] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
   const [totalBooks, setTotalBooks] = useState(0);
   const [activeLoans, setActiveLoans] = useState(0);
   const [overdueItems, setOverdueItems] = useState(0);
   const [showAddBookPage, setShowAddBookPage] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<BookRow | null>(null);
+  const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
 
   const bookRows = useMemo<BookRow[]>(
     () =>
@@ -47,37 +81,110 @@ export default function Books() {
     [books],
   );
 
-  const loadBooks = async () => {
+  const loadLoanStats = async () => {
+    const loans = await getLoans();
+
+    setActiveLoans(loans.filter((loan) => String(loan.status).toUpperCase() === 'ACTIVE').length);
+    setOverdueItems(
+      loans.filter((loan) => {
+        if (String(loan.status).toUpperCase() !== 'ACTIVE' || !loan.dueDate) return false;
+        return new Date(loan.dueDate).getTime() < Date.now();
+      }).length,
+    );
+  };
+
+  const loadAllBooks = async () => {
+    const response = await api.get('/api/admin/books', { params: { page: 0, size: 50 } });
+    const booksData = extractBooksData(response.data);
+
+    setBooks(booksData);
+    setTotalBooks(extractTotalCount(response.data, booksData.length));
+  };
+
+  const searchBooks = async (query: string) => {
+    if (!query.trim()) {
+      await loadAllBooks();
+      return;
+    }
+
+    const authorResponse = await api.get('/api/admin/books', {
+      params: { author: query, page: 0, size: 50 },
+    });
+
+    const authorBooksData = extractBooksData(authorResponse.data);
+
+    if (authorBooksData.length > 0) {
+      setBooks(authorBooksData);
+      return;
+    }
+
+    const categoryResponse = await api.get('/api/admin/books', {
+      params: { category: query, page: 0, size: 50 },
+    });
+
+    const categoryBooksData = extractBooksData(categoryResponse.data);
+    setBooks(categoryBooksData);
+  };
+
+  const refreshPageData = async (query = '') => {
     try {
-      const [bookPage, loans] = await Promise.all([getBooks(0, 50), getLoans()]);
-      setBooks(bookPage.content);
-      setTotalBooks(bookPage.totalElements);
-      setActiveLoans(loans.filter((loan) => String(loan.status).toUpperCase() === 'ACTIVE').length);
-      setOverdueItems(
-        loans.filter((loan) => {
-          if (String(loan.status).toUpperCase() !== 'ACTIVE' || !loan.dueDate) return false;
-          return new Date(loan.dueDate).getTime() < Date.now();
-        }).length,
-      );
+      await Promise.all([loadLoanStats(), loadAllBooks()]);
+
+      if (query.trim()) {
+        await searchBooks(query);
+      }
     } catch (error) {
       console.error('Failed to load books', error);
     }
   };
 
   useEffect(() => {
-    void loadBooks();
+    void refreshPageData();
   }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) return;
+
+    const query = searchQuery.trim();
+    setLocalSearch(query);
+    setSubmittedSearch(query);
+    void refreshPageData(query);
+  }, [searchQuery]);
 
   const handleDelete = async () => {
     if (!bookToDelete) return;
 
     try {
       await deleteBook(bookToDelete.bookId);
-      await loadBooks();
+      await refreshPageData(submittedSearch);
     } catch (error) {
       console.error('Failed to delete book', error);
     } finally {
       setBookToDelete(null);
+    }
+  };
+
+  const handleSaveBook = async () => {
+    const payload: AddBookForm = {
+      title: addBookForm.title.trim(),
+      authorName: addBookForm.authorName.trim(),
+      category: addBookForm.category.trim(),
+      numberOfCopies: Math.max(1, Number(addBookForm.numberOfCopies) || 1),
+    };
+
+    if (!payload.title || !payload.authorName || !payload.category) {
+      return;
+    }
+
+    try {
+      await api.post('/api/admin/books', payload);
+      setShowAddBookPage(false);
+      setAddBookForm(initialAddBookForm);
+      setLocalSearch('');
+      setSubmittedSearch('');
+      await refreshPageData();
+    } catch (error) {
+      console.error('Failed to save book', error);
     }
   };
 
@@ -112,21 +219,33 @@ export default function Books() {
                 <p className="mb-1 font-semibold text-slate-700">
                   Book Title
                 </p>
-                <input className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3" />
+                <input
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
+                  value={addBookForm.title}
+                  onChange={(e) => setAddBookForm((prev) => ({ ...prev, title: e.target.value }))}
+                />
               </label>
 
               <label className="block">
                 <p className="mb-1 font-semibold text-slate-700">
                   Author Name
                 </p>
-                <input className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3" />
+                <input
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
+                  value={addBookForm.authorName}
+                  onChange={(e) => setAddBookForm((prev) => ({ ...prev, authorName: e.target.value }))}
+                />
               </label>
 
               <label className="block">
                 <p className="mb-1 font-semibold text-slate-700">
                   Category / Genre
                 </p>
-                <select className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-600">
+                <select
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-slate-600"
+                  value={addBookForm.category}
+                  onChange={(e) => setAddBookForm((prev) => ({ ...prev, category: e.target.value }))}
+                >
                   <option></option>
                   <option>Fiction</option>
                   <option>Sci-Fi</option>
@@ -147,7 +266,13 @@ export default function Books() {
               </p>
               <input
                 className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3"
-                defaultValue="1"
+                value={addBookForm.numberOfCopies}
+                onChange={(e) =>
+                  setAddBookForm((prev) => ({
+                    ...prev,
+                    numberOfCopies: Number(e.target.value) || 1,
+                  }))
+                }
               />
             </label>
 
@@ -162,7 +287,7 @@ export default function Books() {
 
               <button
                 className="rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white"
-                onClick={() => setShowAddBookPage(false)}
+                onClick={() => void handleSaveBook()}
               >
                 Save Book
               </button>
@@ -217,6 +342,15 @@ export default function Books() {
             />
 
             <input
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const nextQuery = localSearch.trim();
+                  setSubmittedSearch(nextQuery);
+                  void refreshPageData(nextQuery);
+                }
+              }}
               className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
               placeholder="Search by title, author & category"
             />

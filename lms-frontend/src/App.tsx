@@ -50,6 +50,7 @@ function getInitialSession(): LoginResult | null {
 
 function App() {
   const [session, setSession] = useState<LoginResult | null>(getInitialSession);
+  const [searchQuery, setSearchQuery] = useState('');
   const [screen, setScreen] = useState<Screen>(() => {
     const saved = getInitialSession();
     return saved?.role === 'MEMBER' ? 'member-dashboard' : 'admin-dashboard';
@@ -112,12 +113,16 @@ function App() {
           navItems={adminNav}
           activeKey={screen === 'admin-fine-modal' ? 'admin-fines' : screen}
           onSelect={(key) => setScreen(key as Screen)}
+          onSearch={(query) => {
+            setSearchQuery(query);
+            setScreen('admin-books');
+          }}
           user={session.name}
           role="Admin"
           onLogout={handleLogout}
         >
           {screen === 'admin-dashboard' && <AdminDashboard />}
-          {screen === 'admin-books' && <Books />}
+          {screen === 'admin-books' && <Books searchQuery={searchQuery} />}
           {screen === 'admin-members' && <Members />}
           {screen === 'admin-loans' && <Loans />}
           {screen === 'admin-reservations' && <Reservations />}

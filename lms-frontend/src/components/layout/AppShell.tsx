@@ -13,6 +13,7 @@ interface AppShellProps {
   onLogout?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
+  onSearch?: (query: string) => void;
 }
 
 export function AppShell({
@@ -25,6 +26,7 @@ export function AppShell({
   onLogout,
   onOpenNotifications,
   onOpenProfile,
+  onSearch,
 }: PropsWithChildren<AppShellProps>) {
 
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -55,6 +57,7 @@ export function AppShell({
             onOpenNotifications={onOpenNotifications}
             onOpenProfile={onOpenProfile}
             onToggleSidebar={() => setMobileSidebar(!mobileSidebar)}
+            onSearch={onSearch}
           />
 
           <main className="flex-1 w-full max-w-full overflow-x-hidden bg-[#7be2c8] p-3 sm:p-6">

@@ -1,4 +1,4 @@
-import { Bell, Search, Menu } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 
 interface TopBarProps {
   user: string;
@@ -6,6 +6,7 @@ interface TopBarProps {
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onToggleSidebar?: () => void;
+  onSearch?: (query: string) => void;
 }
 
 export function TopBar({
@@ -13,9 +14,8 @@ export function TopBar({
   role,
   onOpenNotifications,
   onOpenProfile,
-  onToggleSidebar
+  onToggleSidebar,
 }: TopBarProps) {
-
   const isMember = role.toLowerCase() === 'member';
   const isAdmin = role.toLowerCase() === 'admin';
 
@@ -32,18 +32,6 @@ export function TopBar({
         >
           <Menu size={18} />
         </button>
-
-        {/* Search */}
-        <label className="relative hidden w-full max-w-md sm:block">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={14}
-          />
-          <input
-            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs"
-            placeholder="Search books, authors, or members..."
-          />
-        </label>
 
       </div>
 

@@ -28,9 +28,9 @@ export interface BookPageResult {
   size: number;
 }
 
-export async function getBooks(page = 0, size = 10): Promise<BookPageResult> {
+export async function getBooks(page = 0, size = 10, author?: string): Promise<BookPageResult> {
   const { data } = await api.get<PagedResponse<BookItem>>('/api/admin/books', {
-    params: { page, size },
+    params: { page, size, ...(author ? { author } : {}) },
   });
 
   return {
