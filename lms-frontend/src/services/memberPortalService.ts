@@ -7,11 +7,20 @@ export interface MemberActiveLoan {
   dueDate: string;
 }
 
+export interface MemberCurrentReservation {
+  reservationId: number;
+  bookTitle: string;
+  author: string;
+  status: string;
+  reservationDate: string;
+}
+
 export interface MemberDashboardData {
   booksBorrowed: number;
   booksReturned: number;
   pendingFine: number;
   activeLoans: MemberActiveLoan[];
+  currentReservations: MemberCurrentReservation[];
 }
 
 export interface MemberBookSearchItem {
@@ -38,6 +47,7 @@ export async function getMemberDashboard(): Promise<MemberDashboardData> {
     booksReturned: Number(data?.booksReturned ?? 0),
     pendingFine: Number(data?.pendingFine ?? 0),
     activeLoans: Array.isArray(data?.activeLoans) ? data.activeLoans : [],
+    currentReservations: Array.isArray(data?.currentReservations) ? data.currentReservations : [],
   };
 }
 

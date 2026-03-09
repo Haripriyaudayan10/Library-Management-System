@@ -4,7 +4,11 @@ import LoanCard from '../../components/common/LoanCard';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
 import ReserveBookModal from './ReserveBookModal';
-import { getMemberDashboard, type MemberActiveLoan } from '../../services/memberPortalService';
+import {
+  getMemberDashboard,
+  type MemberActiveLoan,
+  type MemberCurrentReservation,
+} from '../../services/memberPortalService';
 
 function getDueText(dueDate: string): string {
   const due = new Date(dueDate);
@@ -24,6 +28,7 @@ export default function Dashboard() {
   const [booksReturned, setBooksReturned] = useState(0);
   const [pendingFine, setPendingFine] = useState(0);
   const [activeLoans, setActiveLoans] = useState<MemberActiveLoan[]>([]);
+  const [currentReservations, setCurrentReservations] = useState<MemberCurrentReservation[]>([]);
   const [memberName, setMemberName] = useState('Member');
 
   const loadDashboard = async () => {
@@ -33,6 +38,7 @@ export default function Dashboard() {
       setBooksReturned(data.booksReturned);
       setPendingFine(data.pendingFine);
       setActiveLoans(data.activeLoans);
+      setCurrentReservations(data.currentReservations);
     } catch (error) {
       console.error('Failed to load member dashboard', error);
     }
@@ -63,6 +69,18 @@ export default function Dashboard() {
     [activeLoans],
   );
 
+  const reservationCards = useMemo(
+    () =>
+      currentReservations.map((reservation) => ({
+        reservationId: reservation.reservationId,
+        title: reservation.bookTitle,
+        author: reservation.author,
+        tag: 'Reservation',
+        due: reservation.status.replaceAll('_', ' '),
+      })),
+    [currentReservations],
+  );
+
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -86,6 +104,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {loanCards.map((loan) => (
           <LoanCard key={loan.loanId} title={loan.title} author={loan.author} tag={loan.tag} due={loan.due} />
+        ))}
+      </div>
+
+      <h2 className="mb-3 mt-6 text-2xl font-bold text-slate-800">Current Reservation</h2>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {reservationCards.map((reservation) => (
+          <LoanCard
+            key={reservation.reservationId}
+            title={reservation.title}
+            author={reservation.author}
+            tag={reservation.tag}
+            due={reservation.due}
+          />
         ))}
       </div>
 

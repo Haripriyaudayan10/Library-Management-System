@@ -1,13 +1,49 @@
+import { useEffect, useMemo, useState } from 'react';
 import { BellRing, X } from 'lucide-react';
 import ModalShell from '../../components/common/ModalShell';
 import NotificationCard from '../../components/common/NotificationCard';
 import { Button } from '../../components/ui/Button';
+import {
+  getMemberNotifications,
+  type MemberNotificationItem,
+} from '../../services/memberNotificationService';
 
 interface Props {
   onClose: () => void;
 }
 
 export default function Notifications({ onClose }: Props) {
+  const [notifications, setNotifications] = useState<MemberNotificationItem[]>([]);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const data = await getMemberNotifications();
+        setNotifications(data);
+      } catch (error) {
+        console.error('Failed to load notifications', error);
+      }
+    };
+    void loadNotifications();
+  }, []);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((item) => !item.read).length,
+    [notifications],
+  );
+
+  const toMeta = (createdAt: string): string => {
+    const created = new Date(createdAt);
+    if (Number.isNaN(created.getTime())) return '-';
+    const diffMs = Date.now() - created.getTime();
+    const minutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+    if (minutes < 60) return `${minutes}M AGO`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}H AGO`;
+    const days = Math.floor(hours / 24);
+    return `${days}D AGO`;
+  };
+
   return (
     <ModalShell cardClassName="max-w-md p-4 sm:p-5" overlayClassName="bg-slate-900/35" zIndexClassName="z-40">
 
@@ -19,7 +55,7 @@ export default function Notifications({ onClose }: Props) {
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                My Alerts • 4 Actions Required
+                My Alerts • {unreadCount} Actions Required
               </p>
 
               <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
@@ -42,29 +78,14 @@ export default function Notifications({ onClose }: Props) {
           Recent Priority Notifications
         </p>
 
-        <NotificationCard
-          title="Book Ready for Pickup"
-          description="'The classic you requested is waiting at the circulation desk. Please collect by Friday.'"
-          meta="10M AGO"
-        />
-
-        <NotificationCard
-          title="Approaching Due Date"
-          description="Friendly reminder that your current loan period is ending in 48 hours."
-          meta="3H AGO"
-        />
-
-        <NotificationCard
-          title="Overdue Notice"
-          description="The return date for this resource has passed. Please return it immediately."
-          meta="2D AGO"
-        />
-
-        <NotificationCard
-          title="Library Fine Issued"
-          description="A late return fee has been automatically applied to your account balance."
-          meta="5H AGO"
-        />
+        {notifications.map((notification) => (
+          <NotificationCard
+            key={notification.id}
+            title={notification.title}
+            description={notification.message}
+            meta={toMeta(notification.createdAt)}
+          />
+        ))}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
 
