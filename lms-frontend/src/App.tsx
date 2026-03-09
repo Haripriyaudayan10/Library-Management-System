@@ -3,7 +3,8 @@ import { BookOpen, Calendar, Clock3, IndianRupee, Layers, Users } from 'lucide-r
 
 import { AppShell } from './components/layout/AppShell';
 import type { NavItem } from './components/layout/Sidebar';
-import { loginWithBackend, loginWithDummy, type LoginResult } from './lib/auth';
+import { type LoginResult } from './lib/auth';
+import { login as loginRequest } from './services/authService';
 
 import Login from './pages/Login';
 
@@ -32,6 +33,7 @@ type Screen =
   | 'member-notifications';
 
 const STORAGE_KEY = 'lms_auth_session';
+const JWT_STORAGE_KEY = 'jwt_token';
 
 function getInitialSession(): LoginResult | null {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -68,20 +70,32 @@ function App() {
   const memberNav = useMemo<NavItem[]>(() => [{ key: 'member-dashboard', label: 'My Dashboard', icon: Layers }], []);
 
   const setAuthenticated = (auth: LoginResult) => {
+    localStorage.setItem(JWT_STORAGE_KEY, auth.token);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
     setSession(auth);
     setScreen(auth.role === 'ADMIN' ? 'admin-dashboard' : 'member-dashboard');
+    window.history.pushState({}, '', '/dashboard');
   };
 
   const handleLogin = async (email: string, password: string) => {
-    const dummy = loginWithDummy({ email, password });
-    if (dummy) {
-      setAuthenticated(dummy);
-      return;
-    }
+    try {
+      const backendData = await loginRequest(email, password);
+      const roleUpper = String(backendData.role ?? '').toUpperCase();
+      if (roleUpper !== 'ADMIN' && roleUpper !== 'MEMBER') {
+        throw new Error('Unsupported role from backend');
+      }
 
-    const backend = await loginWithBackend({ email, password });
-    setAuthenticated(backend);
+      const backend: LoginResult = {
+        token: backendData.token,
+        userId: String(backendData.userId),
+        name: backendData.name,
+        role: roleUpper,
+        email,
+      };
+      setAuthenticated(backend);
+    } catch {
+      throw new Error('Invalid email or password');
+    }
   };
 
   const handleLogout = () => {

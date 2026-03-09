@@ -1,23 +1,61 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, Filter, MoreVertical, Search } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import Identity from '../../components/common/Identity';
 import FineModal from './FineModal';
+import { getFines, markFinePaid, type FineItem } from '../../services/fineService';
 
-const rows = [
-  { name: 'Arjun Mehta', id: 'LE-2022-104', total: '₹450.00', unpaid: '₹120.00', status: 'Pending' },
-  { name: 'Priya Sharma', id: 'LE-2023-512', total: '₹50.00', unpaid: '₹0.00', status: '' },
-  { name: 'Vikram Singh', id: 'LE-2021-089', total: '₹820.00', unpaid: '₹340.00', status: 'Pending' },
-  { name: 'Sneha Kapur', id: 'LE-2022-331', total: '₹180.00', unpaid: '₹0.00', status: '' },
-  { name: 'Rahul Varma', id: 'LE-2023-112', total: '₹310.00', unpaid: '₹75.00', status: 'Pending' },
-];
+interface FineRow {
+  fineId: number;
+  name: string;
+  id: string;
+  total: string;
+  unpaid: string;
+  status: string;
+}
 
 export default function Fines() {
   const [showModal, setShowModal] = useState(false);
+  const [fines, setFines] = useState<FineItem[]>([]);
+
+  const loadFines = async () => {
+    try {
+      const data = await getFines();
+      setFines(data);
+    } catch (error) {
+      console.error('Failed to load fines', error);
+    }
+  };
+
+  useEffect(() => {
+    void loadFines();
+  }, []);
+
+  const rows = useMemo<FineRow[]>(
+    () =>
+      fines.map((fine) => ({
+        fineId: fine.fineId,
+        name: fine.loan?.user?.name ?? 'Member',
+        id: fine.loan?.user?.userId ? String(fine.loan.user.userId) : '-',
+        total: `₹${Number(fine.amount ?? 0).toFixed(2)}`,
+        unpaid: fine.paid ? '₹0.00' : `₹${Number(fine.amount ?? 0).toFixed(2)}`,
+        status: fine.paid ? '' : 'Pending',
+      })),
+    [fines],
+  );
+
+  const handleMarkPaid = async (fineId: number) => {
+    try {
+      await markFinePaid(fineId);
+      await loadFines();
+    } catch (error) {
+      console.error('Failed to mark fine as paid', error);
+    }
+  };
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <Card>
         <div className="border-b border-slate-200 px-5 py-4">
           <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Fine Activity</h1>
@@ -51,36 +89,36 @@ export default function Fines() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-xs">
+        <div className="w-full overflow-x-hidden">
+          <table className="w-full table-auto text-xs md:text-sm">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-2 text-left">Member Identity</th>
-                <th className="px-3 py-2 text-left">Member ID</th>
-                <th className="px-3 py-2 text-left">Total Amount</th>
-                <th className="px-3 py-2 text-left">Unpaid Amount</th>
-                <th className="px-3 py-2 text-left">Quick Actions</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member Identity</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member ID</th>
+                <th className="hidden px-2 py-2 text-left text-xs sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Total Amount</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Unpaid Amount</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Quick Actions</th>
               </tr>
             </thead>
 
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3">
+                <tr key={row.fineId} className="border-t border-slate-100">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <Identity name={row.name} subtitle="Active Member" />
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <span className="rounded bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
                       {row.id}
                     </span>
                   </td>
 
-                  <td className="px-3 py-3 font-semibold text-slate-700">
+                  <td className="hidden px-2 py-2 text-xs font-semibold text-slate-700 sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     {row.total}
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <p
                       className={`font-bold ${
                         row.unpaid === '₹0.00'
@@ -98,7 +136,7 @@ export default function Fines() {
                     ) : null}
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
@@ -108,7 +146,7 @@ export default function Fines() {
                         Edit
                       </Button>
 
-                      <Button variant="secondary" size="sm">
+                      <Button variant="secondary" size="sm" onClick={() => void handleMarkPaid(row.fineId)}>
                         Remind
                       </Button>
 
@@ -123,6 +161,6 @@ export default function Fines() {
       </Card>
 
       {showModal && <FineModal onClose={() => setShowModal(false)} />}
-    </>
+    </div>
   );
 }

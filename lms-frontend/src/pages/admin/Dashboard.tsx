@@ -1,32 +1,72 @@
+import { useEffect, useMemo, useState } from 'react';
 import { CircleDollarSign, Clock3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
+import { getAdminDashboard, type AdminDashboardStats } from '../../services/dashboardService';
+import { getLoans, type LoanItem } from '../../services/loanService';
 
-const activityRows = [
-  { name: 'Haripriya Udayan', book: 'A Tale of Two Cities', status: 'Borrowed', time: '2 mins ago' },
-  { name: 'Niranjan Krishna', book: 'The Hunger Games', status: 'Returned', time: '15 mins ago' },
-  { name: 'Akash', book: 'The Alchemist', status: 'Returned', time: '20 mins ago' },
-  { name: 'Pranav S', book: 'Me Before You', status: 'Returned', time: '35 mins ago' },
-  { name: 'Sithara', book: 'Gone Girl', status: 'Reserved', time: '45 mins ago' },
-  { name: 'Anand', book: 'Project Hail Mary', status: 'Overdue', time: '1 hours ago' },
-  { name: 'James', book: 'The Adventures of Sherlock Holmes', status: 'Overdue', time: '2 hours ago' },
-  { name: 'Anjali', book: 'Life of Pi', status: 'Overdue', time: '3 hours ago' },
-  { name: 'overdue', book: 'The Kite Runner', status: 'Overdue', time: '4 hours ago' },
-];
+interface ActivityRow {
+  name: string;
+  book: string;
+  status: string;
+  time: string;
+}
 
 const donut = {
   background:
     'conic-gradient(#e16a4f 0 25%, #239e90 25% 52%, #223645 52% 78%, #d7b44a 78% 100%)',
 };
 
+function formatDate(value?: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+}
+
 export default function Dashboard() {
+  const [stats, setStats] = useState<AdminDashboardStats>({
+    totalBooks: 0,
+    totalCopies: 0,
+    availableCopies: 0,
+    totalMembers: 0,
+    activeLoans: 0,
+    waitingReservations: 0,
+  });
+  const [loans, setLoans] = useState<LoanItem[]>([]);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const [dashboardData, loansData] = await Promise.all([getAdminDashboard(), getLoans()]);
+        setStats(dashboardData);
+        setLoans(loansData);
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      }
+    };
+
+    void loadDashboard();
+  }, []);
+
+  const activityRows = useMemo<ActivityRow[]>(
+    () =>
+      loans.slice(0, 9).map((loan) => ({
+        name: loan.user?.name ?? 'Member',
+        book: loan.copy?.book?.title ?? 'Book',
+        status: String(loan.status ?? 'ACTIVE'),
+        time: formatDate(loan.issueDate),
+      })),
+    [loans],
+  );
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Operational Overview</h1>
       <p className="mb-4 text-sm text-slate-700">Welcome back. Here's what's happening in your library today.</p>
 
       <div className="mb-5 max-w-[320px]">
-        <StatCard label="Total Revenue" value="Rs.100" icon={CircleDollarSign} />
+        <StatCard label="Total Revenue" value={`Rs.${stats.totalBooks}`} icon={CircleDollarSign} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.7fr_0.9fr]">
@@ -36,12 +76,11 @@ export default function Dashboard() {
               <h2 className="text-xl font-bold text-slate-800 sm:text-2xl">Recent Activity</h2>
               <p className="text-xs text-slate-500">Latest transactions and member actions</p>
             </div>
-        
           </div>
 
           <div>
             {activityRows.map((row) => (
-              <div key={`${row.name}-${row.book}`} className="flex items-center justify-between border-t border-slate-100 py-3">
+              <div key={`${row.name}-${row.book}-${row.time}`} className="flex items-center justify-between border-t border-slate-100 py-3">
                 <div className="flex items-center gap-2">
                   <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
                   <div>
@@ -52,9 +91,9 @@ export default function Dashboard() {
                 <div className="text-right text-[10px]">
                   <span
                     className={`rounded-full px-2 py-0.5 font-semibold ${
-                      row.status === 'Overdue'
+                      row.status === 'OVERDUE'
                         ? 'bg-rose-100 text-rose-600'
-                        : row.status === 'Reserved'
+                        : row.status === 'RETURNED'
                           ? 'bg-slate-100 text-slate-600'
                           : 'bg-emerald-100 text-emerald-700'
                     }`}

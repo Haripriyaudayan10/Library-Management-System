@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronRight,
   Filter,
@@ -15,24 +15,70 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
+import { deleteBook, getBooks, type BookItem } from '../../services/bookService';
+import { getLoans } from '../../services/loanService';
 
-const initialBooks = [
-  { title: 'The Midnight Library', author: 'Matt Haig', genre: 'Contemporary Fiction', status: 'Available' },
-  { title: 'Project Hail Mary', author: 'Andy Weir', genre: 'Sci-Fi', status: 'Borrowed' },
-  { title: 'Atomic Habits', author: 'James Clear', genre: 'Self-Help', status: 'Available' },
-  { title: 'Klara and the Sun', author: 'Kazuo Ishiguro', genre: 'Literary Fiction', status: 'Available' },
-  { title: 'The Seven Husbands of Evelyn Hugo', author: 'Taylor Jenkins Reid', genre: 'Historical Fiction', status: 'Reserved' },
-];
+interface BookRow {
+  bookId: number;
+  title: string;
+  author: string;
+  genre: string;
+  status: string;
+}
 
 export default function Books() {
 
-  const [books, setBooks] = useState(initialBooks);
+  const [books, setBooks] = useState<BookItem[]>([]);
+  const [totalBooks, setTotalBooks] = useState(0);
+  const [activeLoans, setActiveLoans] = useState(0);
+  const [overdueItems, setOverdueItems] = useState(0);
   const [showAddBookPage, setShowAddBookPage] = useState(false);
-  const [bookToDelete, setBookToDelete] = useState<any>(null);
+  const [bookToDelete, setBookToDelete] = useState<BookRow | null>(null);
 
-  const handleDelete = () => {
-    setBooks(books.filter((b) => b.title !== bookToDelete.title));
-    setBookToDelete(null);
+  const bookRows = useMemo<BookRow[]>(
+    () =>
+      books.map((book) => ({
+        bookId: book.bookId,
+        title: book.title,
+        author: book.authorName,
+        genre: book.category?.name ?? 'General',
+        status: 'Available',
+      })),
+    [books],
+  );
+
+  const loadBooks = async () => {
+    try {
+      const [bookPage, loans] = await Promise.all([getBooks(0, 50), getLoans()]);
+      setBooks(bookPage.content);
+      setTotalBooks(bookPage.totalElements);
+      setActiveLoans(loans.filter((loan) => String(loan.status).toUpperCase() === 'ACTIVE').length);
+      setOverdueItems(
+        loans.filter((loan) => {
+          if (String(loan.status).toUpperCase() !== 'ACTIVE' || !loan.dueDate) return false;
+          return new Date(loan.dueDate).getTime() < Date.now();
+        }).length,
+      );
+    } catch (error) {
+      console.error('Failed to load books', error);
+    }
+  };
+
+  useEffect(() => {
+    void loadBooks();
+  }, []);
+
+  const handleDelete = async () => {
+    if (!bookToDelete) return;
+
+    try {
+      await deleteBook(bookToDelete.bookId);
+      await loadBooks();
+    } catch (error) {
+      console.error('Failed to delete book', error);
+    } finally {
+      setBookToDelete(null);
+    }
   };
 
   if (showAddBookPage) {
@@ -131,7 +177,7 @@ export default function Books() {
   }
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
 
       <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700/70">
         • Book Management
@@ -154,9 +200,9 @@ export default function Books() {
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Total Books" value="125" icon={Book} />
-        <StatCard label="Active Loans" value="12" icon={BookOpen} />
-        <StatCard label="Overdue Items" value="3" icon={CircleAlert} />
+        <StatCard label="Total Books" value={String(totalBooks)} icon={Book} />
+        <StatCard label="Active Loans" value={String(activeLoans)} icon={BookOpen} />
+        <StatCard label="Overdue Items" value={String(overdueItems)} icon={CircleAlert} />
       </div>
 
       <Card className="mb-4 p-3">
@@ -202,48 +248,48 @@ export default function Books() {
           </h2>
 
           <p className="text-xs font-semibold text-slate-500">
-            Displaying 50 items
+            Displaying {bookRows.length} items
           </p>
 
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto">
 
-          <table className="w-full min-w-[700px] text-xs">
+          <table className="min-w-full text-xs md:text-sm">
 
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
 
               <tr>
-                <th className="px-3 py-2 text-left">Title & Author</th>
-                <th className="px-3 py-2 text-left">Genre</th>
-                <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2 text-left">Actions</th>
+                <th className="px-2 py-2 text-left md:px-4 md:py-3">Title & Author</th>
+                <th className="px-2 py-2 text-left md:px-4 md:py-3">Genre</th>
+                <th className="px-2 py-2 text-left md:px-4 md:py-3">Status</th>
+                <th className="px-2 py-2 text-left md:px-4 md:py-3">Actions</th>
               </tr>
 
             </thead>
 
             <tbody>
 
-              {books.map((book) => (
+              {bookRows.map((book) => (
 
-                <tr key={book.title} className="border-t border-slate-100">
+                <tr key={book.bookId} className="border-t border-slate-100">
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">
                     <p className="font-semibold text-slate-800">{book.title}</p>
                     <p className="text-[11px] text-slate-500">{book.author}</p>
                   </td>
 
-                  <td className="px-3 py-3 text-slate-600">
+                  <td className="px-2 py-2 text-xs text-slate-600 md:px-4 md:py-3 md:text-sm">
                     {book.genre}
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                       {book.status}
                     </span>
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">
 
                     <button
                       onClick={() => setBookToDelete(book)}
@@ -279,4 +325,3 @@ export default function Books() {
     </div>
   );
 }
-

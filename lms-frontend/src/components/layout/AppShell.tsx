@@ -30,10 +30,10 @@ export function AppShell({
   const [mobileSidebar, setMobileSidebar] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-100">
 
       {/* Removed overflow-hidden */}
-      <div className="flex min-h-screen bg-white">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden bg-white">
 
         <Sidebar
           items={navItems}
@@ -47,7 +47,7 @@ export function AppShell({
           closeMobile={() => setMobileSidebar(false)}
         />
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex w-full max-w-full flex-1 flex-col overflow-x-hidden">
 
           <TopBar
             user={user}
@@ -57,7 +57,7 @@ export function AppShell({
             onToggleSidebar={() => setMobileSidebar(!mobileSidebar)}
           />
 
-          <main className="flex-1 bg-[#7be2c8] p-3 sm:p-6 overflow-x-auto">
+          <main className="flex-1 w-full max-w-full overflow-x-hidden bg-[#7be2c8] p-3 sm:p-6">
             {children}
           </main>
 

@@ -1,18 +1,58 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Clock3, Filter } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
+import { getReservations, type ReservationItem } from '../../services/reservationService';
 
-const rows = [
-  { id: 'RES-8821', title: 'The Great Gatsby', isbn: 'ISBN: 978-0743273565', member: 'Marcus Aurelius', code: 'MEM-4002', requested: '2024-05-10', eta: '2024-05-15', status: 'Available' },
-  { id: 'RES-8825', title: 'Advanced Quantum Physics', isbn: 'ISBN: 978-3110531534', member: 'Sarah Jenkins', code: 'MEM-9128', requested: '2024-05-12', eta: '2024-05-14', status: 'Pending' },
-  { id: 'RES-8830', title: 'Atomic Habits', isbn: 'ISBN: 978-0735211292', member: 'David Chen', code: 'MEM-2210', requested: '2024-05-08', eta: '2024-05-11', status: 'Overdue' },
-  { id: 'RES-8834', title: 'Foundation and Empire', isbn: 'ISBN: 978-0553293371', member: 'Elena Rodriguez', code: 'MEM-7754', requested: '2024-05-14', eta: '2024-05-20', status: 'In Transit' },
-  { id: 'RES-8842', title: 'Clean Code', isbn: 'ISBN: 978-0132350884', member: 'Robert Martin', code: 'MEM-1010', requested: '2024-05-13', eta: '2024-05-16', status: 'Pending' },
-];
+interface ReservationRow {
+  id: string;
+  title: string;
+  isbn: string;
+  member: string;
+  code: string;
+  requested: string;
+  status: string;
+}
+
+function formatDate(value?: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+}
 
 export default function Reservations() {
+  const [reservations, setReservations] = useState<ReservationItem[]>([]);
+
+  const loadReservations = async () => {
+    try {
+      const data = await getReservations();
+      setReservations(data);
+    } catch (error) {
+      console.error('Failed to load reservations', error);
+    }
+  };
+
+  useEffect(() => {
+    void loadReservations();
+  }, []);
+
+  const rows = useMemo<ReservationRow[]>(
+    () =>
+      reservations.map((reservation) => ({
+        id: `RES-${reservation.reservationId}`,
+        title: reservation.bookTitle ?? 'Unknown Book',
+        isbn: `BOOK ID: ${reservation.bookId ?? '-'}`,
+        member: reservation.userName ?? 'Member',
+        code: `MEM-${reservation.userId ?? '-'}`,
+        requested: formatDate(reservation.reservationDate),
+        status: String(reservation.status ?? 'WAITING'),
+      })),
+    [reservations],
+  );
+
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 sm:text-4xl">Reservations</h1>
@@ -23,7 +63,7 @@ export default function Reservations() {
       </div>
 
       <div className="mb-4 max-w-full sm:max-w-[280px]">
-        <StatCard label="Active Reservations" value="124" icon={Clock3} />
+        <StatCard label="Active Reservations" value={String(rows.length)} icon={Clock3} />
       </div>
 
       <Card>
@@ -53,46 +93,46 @@ export default function Reservations() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-xs">
+        <div className="w-full overflow-x-hidden">
+          <table className="w-full table-auto text-xs md:text-sm">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-2 text-left">ID</th>
-                <th className="px-3 py-2 text-left">Book Details</th>
-                <th className="px-3 py-2 text-left">Member</th>
-                <th className="px-3 py-2 text-left">Requested</th>
-                <th className="px-3 py-2 text-left">Status</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">ID</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Book Details</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member</th>
+                <th className="hidden px-2 py-2 text-left text-xs sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Requested</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Status</th>
               </tr>
             </thead>
 
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 text-[11px] font-semibold text-slate-500">{row.id}</td>
+                  <td className="truncate px-2 py-2 text-[11px] font-semibold text-slate-500 md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">{row.id}</td>
 
-                  <td className="px-3 py-3">
-                    <p className="font-semibold text-slate-800">{row.title}</p>
-                    <p className="text-[11px] text-slate-500">{row.isbn}</p>
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
+                    <p className="max-w-[120px] break-words whitespace-normal font-semibold text-slate-800 md:max-w-[220px]">{row.title}</p>
+                    <p className="max-w-[120px] break-words whitespace-normal text-[11px] text-slate-500 md:max-w-[220px]">{row.isbn}</p>
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
-                      <div>
-                        <p className="font-semibold text-slate-700">{row.member}</p>
-                        <p className="text-[10px] text-slate-500">{row.code}</p>
+                      <div className="min-w-0">
+                        <p className="max-w-[120px] break-words whitespace-normal font-semibold text-slate-700 md:max-w-[160px]">{row.member}</p>
+                        <p className="max-w-[120px] break-words whitespace-normal text-[10px] text-slate-500 md:max-w-[160px]">{row.code}</p>
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-3 py-3 text-slate-600">{row.requested}</td>
+                  <td className="hidden px-2 py-2 text-xs text-slate-600 sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">{row.requested}</td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                        row.status === 'Overdue'
+                        row.status === 'OVERDUE'
                           ? 'bg-rose-100 text-rose-600'
-                          : row.status === 'Available'
+                          : row.status === 'READY_FOR_PICKUP'
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-slate-100 text-slate-700'
                       }`}
@@ -107,13 +147,11 @@ export default function Reservations() {
         </div>
 
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>Showing 5 of 124 reservations</p>
+          <p>Showing {rows.length} reservations</p>
 
           <div className="flex items-center gap-1">
             <button className="rounded border border-slate-200 px-2 py-1">Previous</button>
             <button className="rounded border border-slate-200 px-2 py-1">1</button>
-            <button className="rounded border border-slate-200 px-2 py-1">2</button>
-            <button className="rounded border border-slate-200 px-2 py-1">3</button>
             <button className="rounded border border-slate-200 px-2 py-1">Next</button>
           </div>
         </div>

@@ -1,26 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Filter, Plus, Search, Users } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import AddMemberModal from './AddMemberModal';
 import EditMemberModal from './EditMemberModal';
+import { getMembers, type MemberItem } from '../../services/memberService';
 
-const members = [
-  { id: 'LIB-8801', name: 'Alexander Wright', mail: 'a.wright@example.com', borrowed: 1, joined: 'May 12, 2023' },
-  { id: 'LIB-9244', name: 'Elena Rodriguez', mail: 'elena.r@example.com', borrowed: 0, joined: 'Aug 20, 2023' },
-  { id: 'LIB-4112', name: 'Marcus Thorne', mail: 'm.thorne@example.com', borrowed: 0, joined: 'Nov 5, 2022' },
-  { id: 'LIB-7723', name: 'Sarah Jenkins', mail: 's.sarah@school.edu', borrowed: 3, joined: 'Jan 15, 2024' },
-  { id: 'LIB-6550', name: 'Julian Voss', mail: 'jvoss@techcorp.com', borrowed: 2, joined: 'Mar 30, 2021' },
-];
+interface MemberRow {
+  id: string;
+  name: string;
+  mail: string;
+  borrowed: number;
+  joined: string;
+}
 
 export default function Members() {
 
+  const [members, setMembers] = useState<MemberItem[]>([]);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   const [showAddMemberSlide, setShowAddMemberSlide] = useState(false);
-  const [editingMember, setEditingMember] = useState<any>(null);
+  const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
+
+  const memberRows = useMemo<MemberRow[]>(
+    () =>
+      members.map((member) => ({
+        id: member.userid,
+        name: member.name,
+        mail: member.email,
+        borrowed: 0,
+        joined: '-',
+      })),
+    [members],
+  );
+
+  const loadMembers = async (pageNo: number) => {
+    try {
+      const data = await getMembers(pageNo, 10);
+      setMembers(data.content);
+      setTotalMembers(data.totalElements);
+      setTotalPages(Math.max(data.totalPages, 1));
+      setPage(data.page);
+    } catch (error) {
+      console.error('Failed to load members', error);
+    }
+  };
+
+  useEffect(() => {
+    void loadMembers(0);
+  }, []);
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
 
       {/* Header */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -37,7 +71,7 @@ export default function Members() {
 
       {/* Stats */}
       <div className="mb-4 max-w-full sm:max-w-md">
-        <StatCard label="Total Members" value="2,842" icon={Users} />
+        <StatCard label="Total Members" value={String(totalMembers)} icon={Users} />
       </div>
 
       <Card>
@@ -65,41 +99,41 @@ export default function Members() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-xs">
+        <div className="w-full overflow-x-hidden">
+          <table className="w-full table-auto text-xs md:text-sm">
 
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-2 text-left">Member ID</th>
-                <th className="w-6 px-2 py-2 text-left">↕</th>
-                <th className="px-3 py-2 text-left">Member Information</th>
-                <th className="px-3 py-2 text-left">Borrowed</th>
-                <th className="px-3 py-2 text-left">Joined On</th>
-                <th className="px-3 py-2 text-left">Edit</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member ID</th>
+                <th className="hidden w-6 px-2 py-2 text-left text-xs md:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">↕</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Member Information</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Borrowed</th>
+                <th className="hidden px-2 py-2 text-left text-xs sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Joined On</th>
+                <th className="px-2 py-2 text-left text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">Edit</th>
               </tr>
             </thead>
 
             <tbody>
-              {members.map((member) => (
+              {memberRows.map((member) => (
                 <tr key={member.id} className="border-t border-slate-100">
 
-                  <td className="px-4 py-3 font-semibold text-sky-700">
+                  <td className="px-2 py-2 text-xs font-semibold text-sky-700 md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     {member.id}
                   </td>
 
-                  <td className="px-2 py-3"></td>
+                  <td className="hidden px-2 py-2 text-xs md:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm"></td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <div className="flex items-center gap-2">
 
                       <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
 
-                      <div>
-                        <p className="font-semibold text-slate-800">
+                      <div className="min-w-0">
+                        <p className="max-w-[120px] break-words whitespace-normal font-semibold text-slate-800 md:max-w-[180px]">
                           {member.name}
                         </p>
 
-                        <p className="text-[11px] text-slate-500">
+                        <p className="max-w-[120px] break-words whitespace-normal text-[11px] text-slate-500 md:max-w-[180px]">
                           {member.mail}
                         </p>
                       </div>
@@ -107,18 +141,18 @@ export default function Members() {
                     </div>
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <span className="rounded-full bg-slate-100 px-2 py-0.5">
                       {member.borrowed}
                     </span>
                   </td>
 
-                  <td className="px-3 py-3 text-slate-600">
+                  <td className="hidden px-2 py-2 text-xs text-slate-600 sm:table-cell md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     {member.joined}
                   </td>
 
                   {/* Edit Button */}
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <Button
                       variant="secondary"
                       size="sm"
@@ -138,33 +172,27 @@ export default function Members() {
         {/* Pagination */}
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
-          <p>Showing 1-5 of 2,842 members</p>
+          <p>Showing {memberRows.length} of {totalMembers} members</p>
 
           <div className="flex items-center gap-1">
 
-            <button className="rounded border border-slate-200 px-2 py-1">
+            <button
+              className="rounded border border-slate-200 px-2 py-1"
+              disabled={page === 0}
+              onClick={() => void loadMembers(Math.max(page - 1, 0))}
+            >
               Previous
             </button>
 
             <button className="rounded bg-blue-700 px-2 py-1 text-white">
-              1
+              {page + 1}
             </button>
 
-            <button className="rounded border border-slate-200 px-2 py-1">
-              2
-            </button>
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              3
-            </button>
-
-            <span className="px-1">...</span>
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              569
-            </button>
-
-            <button className="rounded border border-slate-200 px-2 py-1">
+            <button
+              className="rounded border border-slate-200 px-2 py-1"
+              disabled={page + 1 >= totalPages}
+              onClick={() => void loadMembers(Math.min(page + 1, totalPages - 1))}
+            >
               Next
             </button>
 
@@ -176,14 +204,20 @@ export default function Members() {
 
       {/* Add Member Modal */}
       {showAddMemberSlide && (
-        <AddMemberModal onClose={() => setShowAddMemberSlide(false)} />
+        <AddMemberModal onClose={() => {
+          setShowAddMemberSlide(false);
+          void loadMembers(page);
+        }} />
       )}
 
       {/* Edit Member Modal */}
       {editingMember && (
         <EditMemberModal
           member={editingMember}
-          onClose={() => setEditingMember(null)}
+          onClose={() => {
+            setEditingMember(null);
+            void loadMembers(page);
+          }}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { BookOpenCheck, CircleAlert, Lock, Mail, MoveRight } from 'lucide-react';
 import students from '../assets/login-students.png';
 import { Button } from '../components/ui/Button';
@@ -13,7 +13,8 @@ export default function Login({ onSubmit }: LoginProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
     try {
@@ -43,7 +44,7 @@ export default function Login({ onSubmit }: LoginProps) {
             <img src={students} alt="Students" className="h-full w-full object-cover" />
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+          <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8" onSubmit={handleLogin}>
             <div className="mb-6 text-center">
               <p className="mb-1 inline-flex items-center gap-2 text-emerald-700">
                 <BookOpenCheck size={19} />
@@ -85,7 +86,7 @@ export default function Login({ onSubmit }: LoginProps) {
 
             <Button
               className="h-11 w-full rounded-xl bg-emerald-500 text-sm hover:bg-emerald-600"
-              onClick={handleLogin}
+              type="submit"
               disabled={loading}
             >
               Sign In
@@ -107,7 +108,7 @@ export default function Login({ onSubmit }: LoginProps) {
             <p className="mt-8 text-center text-xs text-slate-500">
               Don't have an account? <span className="font-semibold text-emerald-700">Contact your Librarian</span>
             </p>
-          </div>
+          </form>
         </div>
       </div>
     </div>
