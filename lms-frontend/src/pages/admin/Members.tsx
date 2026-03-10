@@ -28,6 +28,7 @@ export default function Members() {
   const [showAddMemberSlide, setShowAddMemberSlide] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedMemberIds, setExpandedMemberIds] = useState<Record<string, boolean>>({});
 
   const borrowedCountByMember = useMemo(() => {
     const activeLoanStatuses = new Set(['ACTIVE', 'ISSUED', 'REISSUED', 'OVERDUE']);
@@ -96,6 +97,13 @@ export default function Members() {
     void loadMembers(0);
   }, []);
 
+  const toggleMemberId = (memberId: string) => {
+    setExpandedMemberIds((prev) => ({
+      ...prev,
+      [memberId]: !prev[memberId],
+    }));
+  };
+
   return (
     <div className="w-full max-w-full overflow-x-hidden">
 
@@ -139,8 +147,59 @@ export default function Members() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="w-full overflow-x-hidden">
+        {/* Mobile List */}
+        <div className="sm:hidden">
+          {filteredMemberRows.map((member) => (
+            <div key={member.id} className="border-t border-slate-100 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {member.profileImageUrl ? (
+                    <img
+                      src={member.profileImageUrl}
+                      alt={member.name}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold text-slate-800">{member.name}</p>
+                    <p className="break-words text-xs text-slate-500">{member.mail}</p>
+                  </div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => setEditingMember(member)}>
+                  Edit
+                </Button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between">
+                <p className="text-xs text-slate-500">Borrowed</p>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+                  {member.borrowed}
+                </span>
+              </div>
+
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-sky-700"
+                  onClick={() => toggleMemberId(member.id)}
+                >
+                  {expandedMemberIds[member.id] ? 'Hide ID' : 'View ID'}
+                </button>
+
+                {expandedMemberIds[member.id] && (
+                  <p className="mt-1 break-all text-xs font-semibold text-sky-700">
+                    {member.id}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden w-full overflow-x-hidden sm:block">
           <table className="w-full table-auto text-xs md:text-sm">
 
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
