@@ -17,6 +17,8 @@ import { deleteBook, type BookItem } from '../../services/bookService';
 import { getLoans } from '../../services/loanService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
 import { resolveBookCoverMap } from '../../services/bookCoverService';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import Pagination from '../../components/common/Pagination';
 
 interface BookRow {
   bookId: number;
@@ -102,6 +104,8 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [localSearch, setLocalSearch] = useState('');
   const [submittedSearch, setSubmittedSearch] = useState('');
+  const debouncedLocalSearch = useDebouncedValue(localSearch, 425);
+  const effectiveLocalSearch = localSearch.trim() === '' ? '' : debouncedLocalSearch;
   const [currentPage, setCurrentPage] = useState(1);
   const [totalBooks, setTotalBooks] = useState(0);
   const [activeLoans, setActiveLoans] = useState(0);
@@ -111,6 +115,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
+  const [expandedBookIds, setExpandedBookIds] = useState<Record<string, boolean>>({});
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
     'Fiction',
     'Sci-Fi',
@@ -132,7 +137,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   );
 
   const bookSuggestions = useMemo<SearchSuggestionItem[]>(() => {
-    const q = localSearch.trim().toLowerCase();
+    const q = effectiveLocalSearch.trim().toLowerCase();
     if (!q) return [];
     return bookRows
       .filter((book) =>
@@ -146,7 +151,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
         label: `${book.title} (${book.author})`,
         value: book.title,
       }));
-  }, [bookRows, localSearch]);
+  }, [bookRows, effectiveLocalSearch]);
 
   const pageSize = 8;
   const totalPages = Math.max(1, Math.ceil(bookRows.length / pageSize));
@@ -156,6 +161,14 @@ export default function Books({ searchQuery = '' }: BooksProps) {
     () => bookRows.slice(startIndex, endIndex),
     [bookRows, startIndex, endIndex],
   );
+
+  const toggleBookId = (bookId: number) => {
+    const key = String(bookId);
+    setExpandedBookIds((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -274,6 +287,15 @@ export default function Books({ searchQuery = '' }: BooksProps) {
     setSubmittedSearch(query);
     void refreshPageData(query);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const nextQuery = effectiveLocalSearch.trim();
+    if (nextQuery === submittedSearch.trim()) {
+      return;
+    }
+    setSubmittedSearch(nextQuery);
+    void refreshPageData(nextQuery);
+  }, [effectiveLocalSearch, submittedSearch]);
 
   const handleDelete = async () => {
     if (!bookToDelete) return;
@@ -541,7 +563,53 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
         </div>
 
-        <div className="w-full max-w-full overflow-x-auto">
+        <div className="sm:hidden">
+          {paginatedBookRows.map((book) => (
+            <div key={book.bookId} className="border-t border-slate-100 px-4 py-3">
+              <div className="flex items-start gap-3">
+                <img
+                  src={bookCoverMap[String(book.bookId)] || '/default-book.svg'}
+                  alt={book.title}
+                  className="h-14 w-10 rounded object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/default-book.svg';
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="break-words text-sm font-semibold text-slate-800">{book.title}</p>
+                  <p className="break-words text-xs text-slate-500">{book.author}</p>
+                  <p className="mt-2 text-xs text-slate-600">Genre: {book.genre}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                      {book.status}
+                    </span>
+                    <button
+                      onClick={() => setBookToDelete(book)}
+                      className="flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700"
+                    >
+                      <Trash2 size={12} />
+                      Delete
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-sky-700"
+                      onClick={() => toggleBookId(book.bookId)}
+                    >
+                      {expandedBookIds[String(book.bookId)] ? 'Hide Book ID' : 'View Book ID'}
+                    </button>
+                    {expandedBookIds[String(book.bookId)] ? (
+                      <p className="mt-1 break-all text-xs font-semibold text-sky-700">{book.bookId}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden w-full max-w-full overflow-x-auto sm:block">
 
           <table className="min-w-full text-xs md:text-sm">
 
@@ -611,26 +679,17 @@ export default function Books({ searchQuery = '' }: BooksProps) {
 
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3 text-xs">
-          <button
-            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-          >
-            Previous
-          </button>
-
-          <span className="rounded bg-blue-700 px-2 py-1 text-white">
-            {currentPage}
-          </span>
-
-          <button
-            className="rounded border border-slate-200 px-2 py-1 disabled:opacity-50"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-          >
-            Next
-          </button>
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-slate-500">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         </div>
 
       </Card>

@@ -4,6 +4,8 @@ import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import { getReservations, type ReservationItem } from '../../services/reservationService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import Pagination from '../../components/common/Pagination';
 
 interface ReservationRow {
   id: string;
@@ -29,7 +31,11 @@ export default function Reservations() {
 
   const [reservations, setReservations] = useState<ReservationItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 425);
+  const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
   const [filter, setFilter] = useState<FilterType>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [expandedReservationIds, setExpandedReservationIds] = useState<Record<string, boolean>>({});
 
   const loadReservations = async () => {
     try {
@@ -58,7 +64,7 @@ export default function Reservations() {
   );
 
   const reservationSuggestions = useMemo<SearchSuggestionItem[]>(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return [];
 
     return rows
@@ -73,7 +79,7 @@ export default function Reservations() {
         label: `${row.member} • ${row.title}`,
         value: row.member,
       }));
-  }, [rows, searchTerm]);
+  }, [rows, effectiveSearchTerm]);
 
   const filteredRows = useMemo(() => {
 
@@ -91,7 +97,7 @@ export default function Reservations() {
       result = result.filter(r => r.status === 'EXPIRED');
     }
 
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
 
     if (q) {
       result = result.filter(row =>
@@ -103,7 +109,33 @@ export default function Reservations() {
 
     return result;
 
-  }, [rows, searchTerm, filter]);
+  }, [rows, effectiveSearchTerm, filter]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = useMemo(
+    () => filteredRows.slice(startIndex, endIndex),
+    [filteredRows, startIndex, endIndex],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [effectiveSearchTerm, filter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const toggleReservationId = (id: string) => {
+    setExpandedReservationIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   return (
     <div className="w-full max-w-full overflow-x-hidden">
@@ -219,7 +251,64 @@ export default function Reservations() {
 
         {/* TABLE */}
 
-        <div className="w-full overflow-x-hidden">
+        <div className="sm:hidden">
+          {paginatedRows.map((row) => (
+            <div key={row.id} className="border-t border-slate-100 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-slate-800">{row.title}</p>
+                  <p className="text-xs text-slate-500">{row.isbn}</p>
+                </div>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    row.status === 'EXPIRED'
+                      ? 'bg-rose-100 text-rose-600'
+                      : row.status === 'WAITING'
+                      ? 'bg-amber-100 text-amber-700'
+                      : row.status === 'CANCELLED'
+                      ? 'bg-slate-200 text-slate-600'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  {row.status}
+                </span>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2">
+                {row.memberProfileImageUrl ? (
+                  <img
+                    src={row.memberProfileImageUrl}
+                    alt={row.member}
+                    className="h-7 w-7 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                )}
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-slate-700">{row.member}</p>
+                  <p className="break-words text-[10px] text-slate-500">{row.code}</p>
+                </div>
+              </div>
+
+              <p className="mt-2 text-xs text-slate-600">Requested: {row.requested}</p>
+
+              <div className="mt-2">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-sky-700"
+                  onClick={() => toggleReservationId(row.id)}
+                >
+                  {expandedReservationIds[row.id] ? 'Hide Reservation ID' : 'View Reservation ID'}
+                </button>
+                {expandedReservationIds[row.id] ? (
+                  <p className="mt-1 break-all text-xs font-semibold text-sky-700">{row.id}</p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden w-full overflow-x-hidden sm:block">
 
           <table className="w-full table-auto text-xs md:text-sm">
 
@@ -237,7 +326,7 @@ export default function Reservations() {
 
             <tbody>
 
-              {filteredRows.map(row => (
+              {paginatedRows.map(row => (
 
                 <tr key={row.id} className="border-t border-slate-100">
 
@@ -323,23 +412,15 @@ export default function Reservations() {
 
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
-          <p>Showing {filteredRows.length} reservations</p>
+          <p>
+            Showing {filteredRows.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredRows.length)} of {filteredRows.length} reservations
+          </p>
 
-          <div className="flex items-center gap-1">
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              Previous
-            </button>
-
-            <button className="rounded bg-blue-700 px-2 py-1 text-white">
-              1
-            </button>
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              Next
-            </button>
-
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
 
         </div>
 

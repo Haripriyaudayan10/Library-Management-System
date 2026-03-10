@@ -8,6 +8,8 @@ import EditMemberModal from './EditMemberModal';
 import { getMembers, type MemberItem } from '../../services/memberService';
 import { getLoans, type LoanItem } from '../../services/loanService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import Pagination from '../../components/common/Pagination';
 
 interface MemberRow {
   id: string;
@@ -29,6 +31,8 @@ export default function Members() {
   const [showAddMemberSlide, setShowAddMemberSlide] = useState(false);
   const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 425);
+  const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
   const [expandedMemberIds, setExpandedMemberIds] = useState<Record<string, boolean>>({});
 
   const borrowedCountByMember = useMemo(() => {
@@ -56,7 +60,7 @@ export default function Members() {
   );
 
   const memberSuggestions = useMemo<SearchSuggestionItem[]>(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return [];
     return memberRows
       .filter((member) =>
@@ -70,17 +74,17 @@ export default function Members() {
         label: `${member.name} (${member.mail})`,
         value: member.name,
       }));
-  }, [memberRows, searchTerm]);
+  }, [memberRows, effectiveSearchTerm]);
 
   const filteredMemberRows = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return memberRows;
     return memberRows.filter((member) =>
       member.name.toLowerCase().includes(q) ||
       member.id.toLowerCase().includes(q) ||
       member.mail.toLowerCase().includes(q),
     );
-  }, [memberRows, searchTerm]);
+  }, [memberRows, effectiveSearchTerm]);
 
   const loadMembers = async (pageNo: number) => {
     try {
@@ -279,29 +283,13 @@ export default function Members() {
 
           <p>Showing {filteredMemberRows.length} of {totalMembers} members</p>
 
-          <div className="flex items-center gap-1">
-
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              disabled={page === 0}
-              onClick={() => void loadMembers(Math.max(page - 1, 0))}
-            >
-              Previous
-            </button>
-
-            <button className="rounded bg-blue-700 px-2 py-1 text-white">
-              {page + 1}
-            </button>
-
-            <button
-              className="rounded border border-slate-200 px-2 py-1"
-              disabled={page + 1 >= totalPages}
-              onClick={() => void loadMembers(Math.min(page + 1, totalPages - 1))}
-            >
-              Next
-            </button>
-
-          </div>
+          <Pagination
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(nextPage) => {
+              void loadMembers(nextPage - 1);
+            }}
+          />
 
         </div>
 

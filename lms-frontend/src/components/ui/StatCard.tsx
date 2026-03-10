@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, icon: Icon, trend, negative }: StatCardProps) {
   return (
-    <Card className="min-h-[100px] p-4">
+    <Card className="min-h-[100px] p-4 transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
@@ -21,7 +21,7 @@ export function StatCard({ label, value, icon: Icon, trend, negative }: StatCard
             <p className={cn('mt-2 text-[11px] font-semibold', negative ? 'text-rose-600' : 'text-emerald-600')}>{trend}</p>
           ) : null}
         </div>
-        <div className="rounded-lg bg-slate-100 p-2 text-slate-500">
+        <div className="rounded-lg bg-slate-100 p-2 text-slate-500 transition-colors duration-150 hover:bg-slate-200">
           <Icon size={15} />
         </div>
       </div>

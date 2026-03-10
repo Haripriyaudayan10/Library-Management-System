@@ -19,6 +19,7 @@ import { resolveBookCoverMap } from '../../services/bookCoverService';
 import SearchSuggestInput, {
   type SearchSuggestionItem
 } from '../../components/common/SearchSuggestInput';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 
 function getDueText(dueDate: string): string {
@@ -70,6 +71,8 @@ export default function Dashboard() {
 
   // SEARCH
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 425);
+  const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
   const [searchResults, setSearchResults] = useState<MemberBookSearchItem[]>([]);
   const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
 
@@ -124,40 +127,37 @@ export default function Dashboard() {
 
 
 
-  // SEARCH FUNCTION
-  const handleSearch = async (value: string) => {
-
-    setSearchTerm(value);
-
-    const q = value.trim();
-
+  useEffect(() => {
+    const q = effectiveSearchTerm.trim();
     if (!q) {
-
       setSearchResults([]);
-
       return;
-
     }
 
-    try {
+    let active = true;
+    const loadSearchResults = async () => {
+      try {
+        const results = await searchMemberBooks(q);
+        if (!active) return;
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search failed', error);
+        if (!active) return;
+        setSearchResults([]);
+      }
+    };
 
-      const results = await searchMemberBooks(q);
-
-      setSearchResults(results);
-
-    } catch (error) {
-
-      console.error('Search failed', error);
-
-    }
-
-  };
+    void loadSearchResults();
+    return () => {
+      active = false;
+    };
+  }, [effectiveSearchTerm]);
 
 
 
   const searchSuggestions = useMemo<SearchSuggestionItem[]>(() => {
 
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
 
     if (!q) return [];
 
@@ -169,7 +169,7 @@ export default function Dashboard() {
         value: book.title
       }));
 
-  }, [searchResults, searchTerm]);
+  }, [searchResults, effectiveSearchTerm]);
 
 
 
@@ -305,7 +305,7 @@ export default function Dashboard() {
           value={searchTerm}
           placeholder="Search books, authors or categories..."
           suggestions={searchSuggestions}
-          onChange={handleSearch}
+          onChange={setSearchTerm}
           onSelect={(item) => setSearchTerm(item.value)}
         />
 

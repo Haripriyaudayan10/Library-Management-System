@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [books, setBooks] = useState<DashboardBook[]>([]);
   const [fines, setFines] = useState<FineItem[]>([]);
   const [chartData, setChartData] = useState<ChartDatum[]>([]);
+  const [hoveredSliceIndex, setHoveredSliceIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -148,6 +149,56 @@ export default function Dashboard() {
     return { background: `conic-gradient(${segments})` };
   }, [chartData]);
 
+  const chartTotal = useMemo(
+    () => chartData.reduce((sum, item) => sum + item.value, 0),
+    [chartData],
+  );
+
+  const activeSlice = hoveredSliceIndex !== null ? chartData[hoveredSliceIndex] : null;
+
+  const donutSlices = useMemo(() => {
+    if (!chartData.length || chartTotal === 0) return [];
+
+    let cursor = 0;
+    return chartData.map((slice, index) => {
+      const ratio = slice.value / chartTotal;
+      const angle = ratio * Math.PI * 2;
+      const start = cursor;
+      const end = cursor + angle;
+      cursor = end;
+
+      const cx = 80;
+      const cy = 80;
+      const outerRadius = hoveredSliceIndex === index ? 66 : 62;
+      const innerRadius = 34;
+
+      const x1 = cx + outerRadius * Math.cos(start);
+      const y1 = cy + outerRadius * Math.sin(start);
+      const x2 = cx + outerRadius * Math.cos(end);
+      const y2 = cy + outerRadius * Math.sin(end);
+
+      const x3 = cx + innerRadius * Math.cos(end);
+      const y3 = cy + innerRadius * Math.sin(end);
+      const x4 = cx + innerRadius * Math.cos(start);
+      const y4 = cy + innerRadius * Math.sin(start);
+
+      const largeArc = angle > Math.PI ? 1 : 0;
+      const path = [
+        `M ${x1} ${y1}`,
+        `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2}`,
+        `L ${x3} ${y3}`,
+        `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
+        'Z',
+      ].join(' ');
+
+      return {
+        index,
+        path,
+        color: slice.color,
+      };
+    });
+  }, [chartData, chartTotal, hoveredSliceIndex]);
+
   const totalRevenue = useMemo(
     () =>
       fines.reduce((sum, fine) => (fine.paid ? sum + Number(fine.amount ?? 0) : sum), 0),
@@ -189,7 +240,7 @@ export default function Dashboard() {
             {activityRows.map((row) => (
               <div
                 key={`${row.name}-${row.book}-${row.time}`}
-                className="flex items-center justify-between border-t border-slate-100 py-3"
+                className="flex items-center justify-between border-t border-slate-100 py-3 transition-colors hover:bg-slate-50/70"
               >
                 <div className="flex items-center gap-2">
                   {row.profileImageUrl ? (
@@ -245,16 +296,57 @@ export default function Dashboard() {
             Book distribution by primary genre
           </p>
 
-          <div
-            className="mx-auto h-36 w-36 rounded-full"
-            style={donut}
-          >
-            <div className="m-auto h-20 w-20 translate-y-8 rounded-full bg-white" />
+          <div className="mx-auto flex h-36 w-36 items-center justify-center">
+            {donutSlices.length > 0 ? (
+              <svg
+                viewBox="0 0 160 160"
+                className="h-36 w-36"
+                onMouseLeave={() => setHoveredSliceIndex(null)}
+              >
+                {donutSlices.map((slice) => (
+                  <path
+                    key={slice.index}
+                    d={slice.path}
+                    fill={slice.color}
+                    className="cursor-pointer transition-transform duration-150"
+                    onMouseEnter={() => setHoveredSliceIndex(slice.index)}
+                  />
+                ))}
+                <circle cx="80" cy="80" r="32" fill="white" />
+              </svg>
+            ) : (
+              <div
+                className="h-36 w-36 rounded-full"
+                style={donut}
+              >
+                <div className="m-auto h-20 w-20 translate-y-8 rounded-full bg-white" />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 min-h-[44px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            {activeSlice ? (
+              <p>
+                <span className="font-semibold text-slate-800">{activeSlice.name}</span>
+                {` • ${activeSlice.value} books • `}
+                {chartTotal > 0 ? ((activeSlice.value / chartTotal) * 100).toFixed(1) : '0.0'}%
+                {` of total`}
+              </p>
+            ) : (
+              <p>Hover a chart segment to view category details.</p>
+            )}
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-600">
-            {chartData.map((item) => (
-              <p key={item.name} className="inline-flex items-center gap-1">
+            {chartData.map((item, index) => (
+              <p
+                key={item.name}
+                className={`inline-flex cursor-pointer items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-slate-100 ${
+                  hoveredSliceIndex === index ? 'bg-slate-100 font-semibold text-slate-800' : ''
+                }`}
+                onMouseEnter={() => setHoveredSliceIndex(index)}
+                onMouseLeave={() => setHoveredSliceIndex(null)}
+              >
                 <span
                   className="h-2 w-2 rounded-full"
                   style={{ backgroundColor: item.color }}

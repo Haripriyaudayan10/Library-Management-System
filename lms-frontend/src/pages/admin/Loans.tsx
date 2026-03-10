@@ -6,6 +6,8 @@ import { StatCard } from '../../components/ui/StatCard';
 import NewLoanModal from './NewLoanModal';
 import { getLoans, reissueLoan, returnLoan, type LoanItem } from '../../services/loanService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import Pagination from '../../components/common/Pagination';
 
 interface LoanRow {
   id: number;
@@ -31,6 +33,9 @@ export default function Loans() {
   const [showNewLoanSlide, setShowNewLoanSlide] = useState(false);
   const [loans, setLoans] = useState<LoanItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 425);
+  const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadLoans = async () => {
     try {
@@ -60,7 +65,7 @@ export default function Loans() {
   );
 
   const loanSuggestions = useMemo<SearchSuggestionItem[]>(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return [];
 
     return rows
@@ -75,10 +80,10 @@ export default function Loans() {
         label: `${row.name} • ${row.title}`,
         value: row.name,
       }));
-  }, [rows, searchTerm]);
+  }, [rows, effectiveSearchTerm]);
 
   const filteredRows = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return rows;
 
     return rows.filter(row =>
@@ -86,7 +91,26 @@ export default function Loans() {
       row.title.toLowerCase().includes(q) ||
       row.mail.toLowerCase().includes(q)
     );
-  }, [rows, searchTerm]);
+  }, [rows, effectiveSearchTerm]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = useMemo(
+    () => filteredRows.slice(startIndex, endIndex),
+    [filteredRows, startIndex, endIndex],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [effectiveSearchTerm]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const activeLoans = rows.filter(r => r.status === 'ACTIVE').length;
 
@@ -214,7 +238,7 @@ export default function Loans() {
 
             <tbody>
 
-              {filteredRows.map(row => (
+              {paginatedRows.map(row => (
 
                 <tr key={row.id} className="border-t border-slate-100">
 
@@ -331,23 +355,15 @@ export default function Loans() {
 
         <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
 
-          <p>Showing 1-{filteredRows.length} records</p>
+          <p>
+            Showing {filteredRows.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredRows.length)} of {filteredRows.length} records
+          </p>
 
-          <div className="flex items-center gap-1">
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              Previous
-            </button>
-
-            <button className="rounded bg-blue-700 px-2 py-1 text-white">
-              1
-            </button>
-
-            <button className="rounded border border-slate-200 px-2 py-1">
-              Next
-            </button>
-
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
 
         </div>
 

@@ -6,6 +6,8 @@ import Identity from '../../components/common/Identity';
 import FineModal from './FineModal';
 import { getFines, markFinePaid, type FineItem } from '../../services/fineService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
+import Pagination from '../../components/common/Pagination';
 
 interface FineRow {
   fineId: number;
@@ -21,6 +23,9 @@ export default function Fines() {
   const [showModal, setShowModal] = useState(false);
   const [fines, setFines] = useState<FineItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 425);
+  const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadFines = async () => {
     try {
@@ -50,7 +55,7 @@ export default function Fines() {
   );
 
   const fineSuggestions = useMemo<SearchSuggestionItem[]>(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return [];
     return rows
       .filter((row) => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q))
@@ -60,13 +65,32 @@ export default function Fines() {
         label: `${row.name} (${row.id})`,
         value: row.name,
       }));
-  }, [rows, searchTerm]);
+  }, [rows, effectiveSearchTerm]);
 
   const filteredRows = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
+    const q = effectiveSearchTerm.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((row) => row.name.toLowerCase().includes(q) || row.id.toLowerCase().includes(q));
-  }, [rows, searchTerm]);
+  }, [rows, effectiveSearchTerm]);
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = useMemo(
+    () => filteredRows.slice(startIndex, endIndex),
+    [filteredRows, startIndex, endIndex],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [effectiveSearchTerm]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const handleMarkPaid = async (fineId: number) => {
     try {
@@ -126,7 +150,7 @@ export default function Fines() {
             </thead>
 
             <tbody>
-              {filteredRows.map((row) => (
+              {paginatedRows.map((row) => (
                 <tr key={row.fineId} className="border-t border-slate-100">
                   <td className="px-2 py-2 text-xs md:px-3 md:py-2 lg:px-4 lg:py-3 md:text-sm">
                     <Identity name={row.name} subtitle="Active Member" imageUrl={row.profileImageUrl} />
@@ -181,6 +205,18 @@ export default function Fines() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Showing {filteredRows.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, filteredRows.length)} of {filteredRows.length} records
+          </p>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </Card>
 

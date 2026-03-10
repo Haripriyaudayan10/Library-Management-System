@@ -3,6 +3,7 @@ import { BookOpen, Search, X } from 'lucide-react';
 import ModalShell from '../../components/common/ModalShell';
 import { createLoan } from '../../services/loanService';
 import api from '../../services/api';
+import { useDebouncedValue } from '../../lib/useDebouncedValue';
 
 interface NewLoanModalProps {
   onClose: () => void;
@@ -36,6 +37,8 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
   const [selectedMemberId, setSelectedMemberId] = useState('');
 
   const [bookQuery, setBookQuery] = useState('');
+  const debouncedBookQuery = useDebouncedValue(bookQuery, 425);
+  const effectiveBookQuery = bookQuery.trim() === '' ? '' : debouncedBookQuery;
   const [allBooks, setAllBooks] = useState<BookOption[]>([]);
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null);
 
@@ -44,7 +47,7 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
   const [copyHint, setCopyHint] = useState('');
 
   const filteredBooks = useMemo(() => {
-    const q = bookQuery.trim().toLowerCase();
+    const q = effectiveBookQuery.trim().toLowerCase();
     if (!q) return [];
 
     return allBooks
@@ -55,7 +58,7 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
         return title.includes(q) || author.includes(q) || id.includes(q);
       })
       .slice(0, 10);
-  }, [allBooks, bookQuery]);
+  }, [allBooks, effectiveBookQuery]);
 
   useEffect(() => {
     const loadAllBooks = async () => {
