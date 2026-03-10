@@ -12,3 +12,7 @@ export async function getMemberNotifications(): Promise<MemberNotificationItem[]
   const { data } = await api.get<MemberNotificationItem[]>('/api/member/notifications');
   return Array.isArray(data) ? data : [];
 }
+
+export async function markAllMemberNotificationsRead(): Promise<void> {
+  await api.put('/api/member/notifications/read-all');
+}

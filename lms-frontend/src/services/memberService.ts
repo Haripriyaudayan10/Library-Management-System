@@ -5,6 +5,7 @@ export interface MemberItem {
   name: string;
   email: string;
   profileImageUrl?: string;
+  suspended?: boolean;
 }
 
 export interface CreateMemberPayload {
@@ -60,8 +61,13 @@ export async function uploadMemberProfileImage(userId: string, file: File): Prom
   return data;
 }
 
-export async function updateMember(userId: string, name: string): Promise<MemberItem> {
-  const { data } = await api.put<MemberItem>('/api/admin/users', { name }, { params: { userId } });
+export interface UpdateMemberPayload {
+  name?: string;
+  suspended?: boolean;
+}
+
+export async function updateMember(userId: string, payload: UpdateMemberPayload): Promise<MemberItem> {
+  const { data } = await api.put<MemberItem>('/api/admin/users', payload, { params: { userId } });
   return data;
 }
 

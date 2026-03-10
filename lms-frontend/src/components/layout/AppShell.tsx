@@ -11,6 +11,7 @@ interface AppShellProps {
   user: string;
   role: string;
   profileImageUrl?: string;
+  hasUnreadNotifications?: boolean;
   onLogout?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -25,6 +26,7 @@ export function AppShell({
   user,
   role,
   profileImageUrl,
+  hasUnreadNotifications,
   onLogout,
   onOpenNotifications,
   onOpenProfile,
@@ -57,6 +59,7 @@ export function AppShell({
             user={user}
             role={role}
             profileImageUrl={profileImageUrl}
+            hasUnreadNotifications={hasUnreadNotifications}
             onOpenNotifications={onOpenNotifications}
             onOpenProfile={onOpenProfile}
             onToggleSidebar={() => setMobileSidebar(!mobileSidebar)}

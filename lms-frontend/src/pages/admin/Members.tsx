@@ -15,6 +15,7 @@ interface MemberRow {
   mail: string;
   borrowed: number;
   profileImageUrl?: string;
+  suspended?: boolean;
 }
 
 export default function Members() {
@@ -49,6 +50,7 @@ export default function Members() {
         mail: member.email,
         borrowed: borrowedCountByMember[member.userid] ?? 0,
         profileImageUrl: member.profileImageUrl,
+        suspended: member.suspended ?? false,
       })),
     [borrowedCountByMember, members],
   );

@@ -11,12 +11,13 @@ interface ActivityRow {
   book: string;
   status: string;
   time: string;
+  profileImageUrl?: string;
 }
 
 interface LoanItem {
   issueDate?: string;
   status?: string;
-  user?: { name?: string };
+  user?: { name?: string; profileImageUrl?: string };
   copy?: { book?: { title?: string } };
 }
 
@@ -122,6 +123,7 @@ export default function Dashboard() {
           book: loan.copy?.book?.title ?? 'Book',
           status: String(loan.status ?? 'ACTIVE'),
           time: formatDate(loan.issueDate),
+          profileImageUrl: loan.user?.profileImageUrl,
         })),
     [loans],
   );
@@ -190,7 +192,15 @@ export default function Dashboard() {
                 className="flex items-center justify-between border-t border-slate-100 py-3"
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                  {row.profileImageUrl ? (
+                    <img
+                      src={row.profileImageUrl}
+                      alt={row.name}
+                      className="h-7 w-7 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                  )}
 
                   <div>
                     <p className="text-xs font-semibold text-slate-700">

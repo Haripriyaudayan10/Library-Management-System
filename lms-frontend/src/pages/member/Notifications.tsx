@@ -5,15 +5,18 @@ import NotificationCard from '../../components/common/NotificationCard';
 import { Button } from '../../components/ui/Button';
 import {
   getMemberNotifications,
+  markAllMemberNotificationsRead,
   type MemberNotificationItem,
 } from '../../services/memberNotificationService';
 
 interface Props {
   onClose: () => void;
+  onMarkedAllRead?: () => void;
 }
 
-export default function Notifications({ onClose }: Props) {
+export default function Notifications({ onClose, onMarkedAllRead }: Props) {
   const [notifications, setNotifications] = useState<MemberNotificationItem[]>([]);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -97,8 +100,26 @@ export default function Notifications({ onClose }: Props) {
             Close Action Center
           </Button>
 
-          <Button>
-            Mark All as Read
+          <Button
+            onClick={() => {
+              void (async () => {
+                try {
+                  setMarkingAllRead(true);
+                  await markAllMemberNotificationsRead();
+                  setNotifications((prev) =>
+                    prev.map((item) => ({ ...item, read: true })),
+                  );
+                  onMarkedAllRead?.();
+                } catch (error) {
+                  console.error('Failed to mark notifications as read', error);
+                } finally {
+                  setMarkingAllRead(false);
+                }
+              })();
+            }}
+            disabled={markingAllRead || unreadCount === 0}
+          >
+            {markingAllRead ? 'Marking...' : 'Mark All as Read'}
           </Button>
 
         </div>

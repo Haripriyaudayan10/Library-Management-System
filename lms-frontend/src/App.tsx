@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Calendar, Clock3, IndianRupee, Layers, Users } from 'lucide-react';
 
 import { AppShell } from './components/layout/AppShell';
@@ -19,6 +19,7 @@ import FineModal from './pages/admin/FineModal';
 import MemberDashboard from './pages/member/Dashboard';
 import Profile from './pages/member/Profile';
 import Notifications from './pages/member/Notifications';
+import { getMemberNotifications } from './services/memberNotificationService';
 
 type Screen =
   | 'admin-dashboard'
@@ -51,6 +52,7 @@ function getInitialSession(): LoginResult | null {
 function App() {
   const [session, setSession] = useState<LoginResult | null>(getInitialSession);
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [screen, setScreen] = useState<Screen>(() => {
     const saved = getInitialSession();
     return saved?.role === 'MEMBER' ? 'member-dashboard' : 'admin-dashboard';
@@ -118,6 +120,32 @@ function App() {
     });
   };
 
+  const refreshUnreadNotifications = async () => {
+    if (!session || session.role !== 'MEMBER') {
+      setHasUnreadNotifications(false);
+      return;
+    }
+    try {
+      const notifications = await getMemberNotifications();
+      setHasUnreadNotifications(notifications.some((item) => !item.read));
+    } catch (error) {
+      console.error('Failed to refresh unread notifications', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!session || session.role !== 'MEMBER') return;
+    void refreshUnreadNotifications();
+  }, [session?.role, session?.token]);
+
+  useEffect(() => {
+    if (!session || session.role !== 'MEMBER') return;
+    const interval = window.setInterval(() => {
+      void refreshUnreadNotifications();
+    }, 30000);
+    return () => window.clearInterval(interval);
+  }, [session?.role, session?.token]);
+
   const renderScreen = () => {
     if (!session) return <Login onSubmit={handleLogin} />;
 
@@ -158,14 +186,21 @@ function App() {
         user={session.name}
         role="Member"
         profileImageUrl={session.profileImageUrl}
+        hasUnreadNotifications={hasUnreadNotifications}
         onLogout={handleLogout}
-        onOpenNotifications={() => setScreen('member-notifications')}
+        onOpenNotifications={() => {
+          void refreshUnreadNotifications();
+          setScreen('member-notifications');
+        }}
         onOpenProfile={() => setScreen('member-profile')}
       >
         {screen === 'member-dashboard' && <MemberDashboard />}
         {screen === 'member-profile' && <Profile onProfileUpdated={handleProfileUpdated} />}
         {screen === 'member-notifications' && (
-  <Notifications onClose={() => setScreen('member-dashboard')} />
+  <Notifications
+    onClose={() => setScreen('member-dashboard')}
+    onMarkedAllRead={() => setHasUnreadNotifications(false)}
+  />
 )}
       </AppShell>
 

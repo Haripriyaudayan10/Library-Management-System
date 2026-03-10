@@ -6,6 +6,7 @@ import {
   searchMemberBooks,
   type MemberBookSearchItem,
 } from '../../services/memberPortalService';
+import { resolveBookCoverMap } from '../../services/bookCoverService';
 
 interface ReserveBookModalProps {
   onClose: () => void;
@@ -16,6 +17,7 @@ export default function ReserveBookModal({ onClose, onReserved }: ReserveBookMod
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MemberBookSearchItem[]>([]);
   const [selectedBook, setSelectedBook] = useState<MemberBookSearchItem | null>(null);
+  const [coverMap, setCoverMap] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -38,6 +40,27 @@ export default function ReserveBookModal({ onClose, onReserved }: ReserveBookMod
 
     return () => clearTimeout(handle);
   }, [query]);
+
+  useEffect(() => {
+    let active = true;
+    const applyCovers = async () => {
+      if (results.length === 0) return;
+      const map = await resolveBookCoverMap(
+        results.map((book) => ({
+          id: String(book.bookId),
+          title: book.title,
+          author: book.author,
+          existingUrl: book.coverImageUrl,
+        })),
+      );
+      if (!active) return;
+      setCoverMap((prev) => ({ ...prev, ...map }));
+    };
+    void applyCovers();
+    return () => {
+      active = false;
+    };
+  }, [results]);
 
   const queueText = useMemo(() => {
     if (!selectedBook) return 'Auto';
@@ -101,14 +124,22 @@ export default function ReserveBookModal({ onClose, onReserved }: ReserveBookMod
                   <button
                     key={book.bookId}
                     type="button"
-                    className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm hover:bg-slate-50"
                     onClick={() => {
                       setSelectedBook(book);
                       setQuery(book.title);
                       setResults([]);
                     }}
                   >
-                    {book.title} - {book.author}
+                    <img
+                      src={coverMap[String(book.bookId)] || '/default-book.svg'}
+                      alt={book.title}
+                      className="h-10 w-7 rounded object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/default-book.svg';
+                      }}
+                    />
+                    <span>{book.title} - {book.author}</span>
                   </button>
                 ))}
               </div>
@@ -119,7 +150,16 @@ export default function ReserveBookModal({ onClose, onReserved }: ReserveBookMod
             <p className="mb-2 text-lg font-bold text-slate-800 sm:text-xl">Selected Book</p>
             <div className="rounded-xl border border-slate-200 bg-slate-50/70">
               <div className="flex flex-col gap-3 border-b border-slate-200 p-3.5 sm:flex-row">
-                <div className="h-28 w-20 rounded-lg border border-slate-300 bg-[linear-gradient(180deg,#f3efe4,#dfd8c8)]" />
+                <img
+                  src={
+                    (selectedBook ? coverMap[String(selectedBook.bookId)] : '') || '/default-book.svg'
+                  }
+                  alt={selectedBook?.title ?? 'Selected book cover'}
+                  className="h-28 w-20 rounded-lg border border-slate-300 object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = '/default-book.svg';
+                  }}
+                />
                 <div>
                   <p className="text-xl font-bold text-slate-800 sm:text-2xl">{selectedBook?.title ?? 'No book selected'}</p>
                   <p className="mt-0.5 text-lg text-slate-600 sm:text-xl">{selectedBook?.author ?? '-'}</p>

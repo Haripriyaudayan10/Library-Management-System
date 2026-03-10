@@ -41,6 +41,7 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
 
   const [availableCopies, setAvailableCopies] = useState<CopyOption[]>([]);
   const [selectedCopyId, setSelectedCopyId] = useState('');
+  const [copyHint, setCopyHint] = useState('');
 
   const filteredBooks = useMemo(() => {
     const q = bookQuery.trim().toLowerCase();
@@ -75,25 +76,36 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
     if (!selectedBookId) {
       setAvailableCopies([]);
       setSelectedCopyId('');
+      setCopyHint('');
       return;
     }
 
     const loadCopies = async () => {
       try {
-        const { data } = await api.get<CopyOption[]>(`/api/admin/copies/book/${selectedBookId}`);
-        const options = (Array.isArray(data) ? data : []).filter(
-          (copy) => String(copy.status).toUpperCase() === 'AVAILABLE',
-        );
+        const { data } = await api.get<CopyOption[]>('/api/admin/loans/eligible-copies', {
+          params: { bookId: selectedBookId, ...(selectedMemberId ? { userId: selectedMemberId } : {}) },
+        });
+        const options = Array.isArray(data) ? data : [];
         setAvailableCopies(options);
         setSelectedCopyId('');
+        if (options.length === 0) {
+          setCopyHint(
+            selectedMemberId
+              ? 'No eligible copies for this member. The ready-for-pickup copy may be reserved for another member.'
+              : 'Select member first. Reserved-ready copies are only issuable to the reserved member.',
+          );
+        } else {
+          setCopyHint('');
+        }
       } catch (error) {
         console.error('Failed to load available copies', error);
         setAvailableCopies([]);
+        setCopyHint('Unable to load eligible copies.');
       }
     };
 
     void loadCopies();
-  }, [selectedBookId]);
+  }, [selectedBookId, selectedMemberId]);
 
   useEffect(() => {
     const query = memberQuery.trim();
@@ -218,18 +230,23 @@ export default function NewLoanModal({ onClose, onCreated }: NewLoanModalProps) 
 
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[140px_1fr] sm:gap-4">
               <p className="text-slate-800">Available Copies:</p>
-              <select
-                className="h-9 w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700"
-                value={selectedCopyId}
-                onChange={(e) => setSelectedCopyId(e.target.value)}
-              >
-                <option value="">Select Copy ID</option>
-                {availableCopies.map((copy) => (
-                  <option key={copy.copyid} value={String(copy.copyid)}>
-                    {copy.copyid}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <select
+                  className="h-9 w-40 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700"
+                  value={selectedCopyId}
+                  onChange={(e) => setSelectedCopyId(e.target.value)}
+                >
+                  <option value="">Select Copy ID</option>
+                  {availableCopies.map((copy) => (
+                    <option key={copy.copyid} value={String(copy.copyid)}>
+                      {copy.copyid}
+                    </option>
+                  ))}
+                </select>
+                {copyHint ? (
+                  <p className="mt-1 max-w-md text-[11px] text-rose-600">{copyHint}</p>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[140px_1fr] sm:gap-4">

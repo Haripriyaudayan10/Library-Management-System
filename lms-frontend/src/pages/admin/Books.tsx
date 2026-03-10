@@ -16,6 +16,7 @@ import api from '../../services/api';
 import { deleteBook, type BookItem } from '../../services/bookService';
 import { getLoans } from '../../services/loanService';
 import SearchSuggestInput, { type SearchSuggestionItem } from '../../components/common/SearchSuggestInput';
+import { resolveBookCoverMap } from '../../services/bookCoverService';
 
 interface BookRow {
   bookId: number;
@@ -23,6 +24,7 @@ interface BookRow {
   author: string;
   genre: string;
   status: string;
+  coverImageUrl?: string;
 }
 
 interface BooksProps {
@@ -108,6 +110,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [bookToDelete, setBookToDelete] = useState<BookRow | null>(null);
   const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
     'Fiction',
     'Sci-Fi',
@@ -123,6 +126,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
         author: book.authorName,
         genre: book.category?.name ?? 'General',
         status: 'Available',
+        coverImageUrl: book.coverImageUrl,
       })),
     [books],
   );
@@ -158,6 +162,28 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    let active = true;
+    const applyCovers = async () => {
+      if (bookRows.length === 0) return;
+      const map = await resolveBookCoverMap(
+        bookRows.map((book) => ({
+          id: String(book.bookId),
+          title: book.title,
+          author: book.author,
+          existingUrl: book.coverImageUrl,
+        })),
+      );
+      if (!active) return;
+      setBookCoverMap((prev) => ({ ...prev, ...map }));
+    };
+
+    void applyCovers();
+    return () => {
+      active = false;
+    };
+  }, [bookRows]);
 
   const loadLoanStats = async () => {
     const loans = await getLoans();
@@ -537,8 +563,20 @@ export default function Books({ searchQuery = '' }: BooksProps) {
                 <tr key={book.bookId} className="border-t border-slate-100">
 
                   <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">
-                    <p className="font-semibold text-slate-800">{book.title}</p>
-                    <p className="text-[11px] text-slate-500">{book.author}</p>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={bookCoverMap[String(book.bookId)] || '/default-book.svg'}
+                        alt={book.title}
+                        className="h-12 w-9 rounded object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/default-book.svg';
+                        }}
+                      />
+                      <div>
+                        <p className="font-semibold text-slate-800">{book.title}</p>
+                        <p className="text-[11px] text-slate-500">{book.author}</p>
+                      </div>
+                    </div>
                   </td>
 
                   <td className="px-2 py-2 text-xs text-slate-600 md:px-4 md:py-3 md:text-sm">

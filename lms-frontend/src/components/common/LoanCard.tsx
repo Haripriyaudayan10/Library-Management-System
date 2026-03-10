@@ -7,14 +7,25 @@ interface Props {
   author: string;
   tag: string;
   due: string;
+  cover?: string; // ✅ new optional prop
 }
 
-export default function LoanCard({ title, author, tag, due }: Props) {
+export default function LoanCard({ title, author, tag, due, cover }: Props) {
   return (
     <Card className="flex w-full items-center gap-3 p-3">
-      <div className="h-20 w-16 rounded-md bg-gradient-to-br from-slate-200 to-slate-400" />
+
+      {/* BOOK COVER */}
+      <img
+        src={cover || '/default-book.svg'}
+        alt={title}
+        className="h-20 w-16 rounded-md object-cover"
+        onError={(e) => {
+          e.currentTarget.src = '/default-book.svg';
+        }}
+      />
 
       <div className="flex-1">
+
         <div className="mb-0.5 flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-slate-800">{title}</p>
           <Badge>{tag}</Badge>
@@ -26,7 +37,9 @@ export default function LoanCard({ title, author, tag, due }: Props) {
           <Clock3 size={11} />
           {due}
         </p>
+
       </div>
+
     </Card>
   );
 }

@@ -9,6 +9,7 @@ export interface BookItem {
   bookId: number;
   title: string;
   authorName: string;
+  coverImageUrl?: string;
   category?: BookCategory;
 }
 

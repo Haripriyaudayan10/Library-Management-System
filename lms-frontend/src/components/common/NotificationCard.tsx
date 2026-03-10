@@ -1,5 +1,4 @@
 import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
 
 interface Props {
   title: string;
@@ -16,13 +15,6 @@ export default function NotificationCard({ title, description, meta }: Props) {
           <p className="text-xs text-slate-500">{description}</p>
         </div>
         <p className="text-[10px] font-semibold uppercase text-slate-400">{meta}</p>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-        <Button size="sm" variant="ghost">
-          Dismiss
-        </Button>
-        <Button size="sm">View Details</Button>
       </div>
     </Card>
   );

@@ -4,6 +4,7 @@ interface TopBarProps {
   user: string;
   role: string;
   profileImageUrl?: string;
+  hasUnreadNotifications?: boolean;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onToggleSidebar?: () => void;
@@ -14,6 +15,7 @@ export function TopBar({
   user,
   role,
   profileImageUrl,
+  hasUnreadNotifications,
   onOpenNotifications,
   onOpenProfile,
   onToggleSidebar,
@@ -42,10 +44,13 @@ export function TopBar({
 
         {isMember && (
           <button
-            className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
+            className="relative rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
             onClick={onOpenNotifications}
           >
             <Bell size={16} />
+            {hasUnreadNotifications ? (
+              <span className="absolute right-1 top-1 block h-2 w-2 rounded-full bg-rose-500" />
+            ) : null}
           </button>
         )}
 

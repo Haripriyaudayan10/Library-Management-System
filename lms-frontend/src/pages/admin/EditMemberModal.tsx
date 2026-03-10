@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import ModalShell from '../../components/common/ModalShell';
 import { Button } from '../../components/ui/Button';
-import { deleteMember, updateMember } from '../../services/memberService';
+import { updateMember } from '../../services/memberService';
 
 interface Props {
   member: {
     id: string;
     name: string;
     mail: string;
+    suspended?: boolean;
   };
   onClose: () => void;
   onSuccess?: () => void;
@@ -16,13 +17,14 @@ interface Props {
 
 export default function EditMemberModal({ member, onClose, onSuccess }: Props) {
   const [name, setName] = useState(member.name);
+  const [isSuspended, setIsSuspended] = useState(Boolean(member.suspended));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSave = async () => {
     if (!name.trim()) return;
     try {
-      await updateMember(member.id, name.trim());
+      await updateMember(member.id, { name: name.trim(), suspended: isSuspended });
       onSuccess?.();
       onClose();
     } catch (error) {
@@ -30,13 +32,13 @@ export default function EditMemberModal({ member, onClose, onSuccess }: Props) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleSuspendToggle = async () => {
     try {
-      await deleteMember(member.id);
+      await updateMember(member.id, { suspended: !isSuspended });
+      setIsSuspended((prev) => !prev);
       onSuccess?.();
-      onClose();
     } catch (error) {
-      console.error('Failed to delete member', error);
+      console.error('Failed to suspend member', error);
     }
   };
 
@@ -94,7 +96,11 @@ export default function EditMemberModal({ member, onClose, onSuccess }: Props) {
           {/* Status */}
           <div>
             <label className="text-xs font-semibold text-slate-500">Membership Status</label>
-            <select className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"
+              value={isSuspended ? 'Suspended' : 'Active'}
+              onChange={(e) => setIsSuspended(e.target.value === 'Suspended')}
+            >
               <option>Active</option>
               <option>Suspended</option>
             </select>
@@ -129,8 +135,8 @@ export default function EditMemberModal({ member, onClose, onSuccess }: Props) {
 
           {/* Buttons */}
           <div className="flex flex-col gap-2 pt-3 sm:flex-row sm:justify-end">
-            <Button variant="danger" onClick={() => void handleDelete()}>
-              Delete Member
+            <Button variant="danger" onClick={() => void handleSuspendToggle()}>
+              {isSuspended ? 'Reactivate Member' : 'Suspend Member'}
             </Button>
             <Button variant="secondary" onClick={onClose}>
               Cancel
