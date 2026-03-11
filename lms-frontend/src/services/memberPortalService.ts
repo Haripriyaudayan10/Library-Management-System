@@ -13,6 +13,7 @@ export interface MemberCurrentReservation {
   bookTitle: string;
   author: string;
   status: string;
+  queuePosition?: number;
   reservationDate: string;
   coverImageUrl?: string;   // ✅ add this
 }
@@ -76,12 +77,19 @@ export async function reserveMemberBook(bookId: number): Promise<string> {
   return typeof data === 'string' ? data : 'Reservation processed.';
 }
 
+export async function cancelMemberReservation(reservationId: number): Promise<string> {
+  const { data } = await api.delete(`/api/member/reservations/${reservationId}`);
+  return typeof data === 'string' ? data : 'Reservation cancelled.';
+}
+
 export async function getMemberProfile(): Promise<MemberProfileData> {
   const { data } = await api.get<MemberProfileData>('/api/member/profile');
   return data;
 }
 
 export async function updateMemberProfile(payload: {
+  name?: string;
+  email?: string;
   phoneNumber?: string;
   about?: string;
 }): Promise<MemberProfileData> {

@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
 import DeleteConfirmModal from '../../components/common/DeleteConfirmModal';
+import ModalShell from '../../components/common/ModalShell';
 import api from '../../services/api';
 import { deleteBook, type BookItem } from '../../services/bookService';
 import { getLoans } from '../../services/loanService';
@@ -112,6 +113,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [overdueItems, setOverdueItems] = useState(0);
   const [showAddBookPage, setShowAddBookPage] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<BookRow | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
@@ -305,6 +307,22 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       await refreshPageData(submittedSearch);
     } catch (error) {
       console.error('Failed to delete book', error);
+      const maybeAxios = error as {
+        response?: { data?: { message?: string; error?: string } | string; status?: number };
+      };
+      const responseData = maybeAxios?.response?.data;
+      const statusCode = maybeAxios?.response?.status;
+      const asString = typeof responseData === 'string' ? responseData.trim() : '';
+      const apiMessage =
+        typeof responseData === 'string'
+          ? asString
+          : responseData?.message?.trim() || responseData?.error?.trim() || '';
+      const deleteBlockedReason = 'Cannot delete this book now. All loans for this book must be returned first.';
+      const message =
+        statusCode === 409
+          ? (apiMessage || deleteBlockedReason)
+          : (apiMessage || 'All loans for this book must be returned first.');
+      setDeleteErrorMessage(message);
     } finally {
       setBookToDelete(null);
     }
@@ -496,7 +514,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   return (
     <div className="w-full max-w-full overflow-x-hidden">
 
-      <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700/70">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-black">
         • Book Management
       </div>
 
@@ -701,6 +719,26 @@ export default function Books({ searchQuery = '' }: BooksProps) {
           onCancel={() => setBookToDelete(null)}
           onConfirm={handleDelete}
         />
+      )}
+
+      {deleteErrorMessage && (
+        <ModalShell cardClassName="max-w-md" overlayClassName="bg-slate-900/30" zIndexClassName="z-50">
+          <div className="border-b border-slate-200 px-5 py-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Cannot Delete Book
+            </h2>
+          </div>
+
+          <div className="px-5 py-4 text-sm text-slate-700">
+            {deleteErrorMessage}
+          </div>
+
+          <div className="flex justify-end border-t border-slate-200 px-5 py-4">
+            <Button variant="primary" onClick={() => setDeleteErrorMessage(null)}>
+              OK
+            </Button>
+          </div>
+        </ModalShell>
       )}
 
     </div>

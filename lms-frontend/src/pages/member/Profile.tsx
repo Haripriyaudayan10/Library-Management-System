@@ -16,6 +16,8 @@ interface ProfileProps {
 export default function Profile({ onProfileUpdated }: ProfileProps) {
   const [profile, setProfile] = useState<MemberProfileData | null>(null);
   const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [about, setAbout] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -38,6 +40,8 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
     try {
       const data = await getMemberProfile();
       setProfile(data);
+      setName(data.name ?? '');
+      setEmail(data.email ?? '');
       setPhoneNumber(data.phoneNumber ?? '');
       setAbout(data.about ?? '');
       onProfileUpdated?.({
@@ -74,7 +78,13 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
     setSaving(true);
     setError('');
     try {
-      const payload: { phoneNumber?: string; about?: string } = {};
+      const payload: { name?: string; email?: string; phoneNumber?: string; about?: string } = {};
+      if (name.trim() !== (profile.name ?? '')) {
+        payload.name = name.trim();
+      }
+      if (email.trim() !== (profile.email ?? '')) {
+        payload.email = email.trim();
+      }
       if (phoneNumber !== (profile.phoneNumber ?? '')) {
         payload.phoneNumber = phoneNumber;
       }
@@ -93,7 +103,10 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
       setEditing(false);
     } catch (err) {
       console.error('Failed to update profile', err);
-      setError('Unable to update profile right now.');
+      const maybeAxios = err as { response?: { data?: { message?: string } | string } };
+      const data = maybeAxios?.response?.data;
+      const message = typeof data === 'string' ? data : data?.message;
+      setError(message || 'Unable to update profile right now.');
     } finally {
       setSaving(false);
     }
@@ -116,7 +129,16 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 sm:h-24 sm:w-24" />
             )}
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 sm:text-5xl">{profile?.name ?? 'Member'}</h1>
+              {editing ? (
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-11 w-full max-w-xl rounded-lg border border-slate-200 bg-white px-3 text-2xl font-bold text-slate-900 sm:h-14 sm:text-5xl"
+                  placeholder="User name"
+                />
+              ) : (
+                <h1 className="text-3xl font-bold text-slate-900 sm:text-5xl">{profile?.name ?? 'Member'}</h1>
+              )}
               <p className="mt-1 text-xs font-semibold text-slate-500">User ID: {profile?.userId ?? '-'}</p>
               {editing ? (
                 <textarea
@@ -149,6 +171,8 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => {
                 setEditing(false);
+                setName(profile?.name ?? '');
+                setEmail(profile?.email ?? '');
                 setPhoneNumber(profile?.phoneNumber ?? '');
                 setAbout(profile?.about ?? '');
                 setImageFile(null);
@@ -174,7 +198,15 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
             <div className="rounded-lg bg-slate-100 p-2 text-slate-500"><Mail size={16} /></div>
             <div>
               <p className="text-xs font-semibold uppercase text-slate-400">Registered Email</p>
-              <p className="font-semibold text-slate-800">{profile?.email ?? '-'}</p>
+              {editing ? (
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-800"
+                />
+              ) : (
+                <p className="font-semibold text-slate-800">{profile?.email ?? '-'}</p>
+              )}
             </div>
           </div>
 

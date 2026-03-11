@@ -8,6 +8,7 @@ import { StatCard } from '../../components/ui/StatCard';
 import ReserveBookModal from './ReserveBookModal';
 
 import {
+  cancelMemberReservation,
   getMemberDashboard,
   searchMemberBooks,
   type MemberActiveLoan,
@@ -75,6 +76,8 @@ export default function Dashboard() {
   const effectiveSearchTerm = searchTerm.trim() === '' ? '' : debouncedSearchTerm;
   const [searchResults, setSearchResults] = useState<MemberBookSearchItem[]>([]);
   const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
+  const [reservationActionMessage, setReservationActionMessage] = useState('');
+  const [cancellingReservationId, setCancellingReservationId] = useState<number | null>(null);
 
 
 
@@ -210,16 +213,34 @@ export default function Dashboard() {
 
         author: reservation.author,
         coverImageUrl: reservation.coverImageUrl,
+        status: reservation.status,
 
         tag: 'Reservation',
 
-        due: reservation.status.replaceAll('_', ' ')
+        due: `${reservation.status.replaceAll('_', ' ')}${
+          reservation.queuePosition ? ` • Queue Position ${reservation.queuePosition}` : ''
+        }`
 
       })),
 
     [currentReservations]
 
   );
+
+  const handleCancelReservation = async (reservationId: number) => {
+    setCancellingReservationId(reservationId);
+    setReservationActionMessage('');
+    try {
+      const response = await cancelMemberReservation(reservationId);
+      setReservationActionMessage(response);
+      await loadDashboard();
+    } catch (error) {
+      console.error('Failed to cancel reservation', error);
+      setReservationActionMessage('Unable to cancel reservation. Cancellation is allowed only in WAITING status.');
+    } finally {
+      setCancellingReservationId(null);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -412,19 +433,34 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
 
         {reservationCards.map((reservation) => (
-
-          <LoanCard
-            key={reservation.reservationId}
-            title={reservation.title}
-            author={reservation.author}
-            tag={reservation.tag}
-            due={reservation.due}
-            cover={bookCoverMap[`reservation-${reservation.reservationId}`]}
-          />
+          <div key={reservation.reservationId} className="space-y-2">
+            <LoanCard
+              title={reservation.title}
+              author={reservation.author}
+              tag={reservation.tag}
+              due={reservation.due}
+              cover={bookCoverMap[`reservation-${reservation.reservationId}`]}
+            />
+            {reservation.status === 'WAITING' ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={() => void handleCancelReservation(reservation.reservationId)}
+                disabled={cancellingReservationId === reservation.reservationId}
+              >
+                {cancellingReservationId === reservation.reservationId ? 'Cancelling...' : 'Cancel Reservation'}
+              </Button>
+            ) : null}
+          </div>
 
         ))}
 
       </div>
+
+      {reservationActionMessage ? (
+        <p className="mt-3 text-sm font-semibold text-slate-700">{reservationActionMessage}</p>
+      ) : null}
 
 
 
