@@ -12,6 +12,3 @@ node_modules/
 # build
 target/
 dist/
-
-# optional (if later needed)
-db_dump/full_dump.sql
