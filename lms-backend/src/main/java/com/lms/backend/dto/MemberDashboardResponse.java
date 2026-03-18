@@ -14,5 +14,6 @@ public class MemberDashboardResponse {
     private double pendingFine;
 
     private List<ActiveLoanResponse> activeLoans;
+    private List<CurrentReservationResponse> currentReservations;
     private List<FineResponse> fines;
 }

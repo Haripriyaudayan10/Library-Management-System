@@ -111,7 +111,7 @@ export default function Reservations() {
 
   }, [rows, effectiveSearchTerm, filter]);
 
-  const pageSize = 8;
+  const pageSize = 7;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;

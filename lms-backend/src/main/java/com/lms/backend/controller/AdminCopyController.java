@@ -8,6 +8,7 @@ import com.lms.backend.repository.BookRepository;
 import com.lms.backend.repository.CopyRepository;
 import com.lms.backend.repository.ReservationRepository;
 import com.lms.backend.service.NotificationService;
+import com.lms.backend.service.ReservationQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +24,11 @@ public class AdminCopyController {
     private final BookRepository bookRepository;
     private final ReservationRepository reservationRepository;
     private final NotificationService notificationService;
+    private final ReservationQueueService reservationQueueService;
 
-    // ✅ ADD COPY
+    // ===============================
+    // ADD NEW COPY
+    // ===============================
     @PostMapping
     public Copy addCopy(@RequestParam Long bookId) {
 
@@ -37,26 +41,31 @@ public class AdminCopyController {
 
         Copy savedCopy = copyRepository.save(copy);
 
-        // 🔔 Trigger reservation handling
-        handleWaitingReservations(bookId, book.getTitle());
+        // handle reservation queue
+        handleWaitingReservations(book.getBookId(), book.getTitle());
 
         return savedCopy;
     }
 
-    // ✅ UPDATE COPY STATUS
+    // ===============================
+    // UPDATE COPY STATUS
+    // ===============================
     @PutMapping("/{copyId}")
-    public Copy updateCopyStatus(@PathVariable Long copyId,
-                                 @RequestParam String status) {
+    public Copy updateCopyStatus(
+            @PathVariable Long copyId,
+            @RequestParam String status
+    ) {
 
         Copy copy = copyRepository.findById(copyId)
                 .orElseThrow(() -> new RuntimeException("Copy not found"));
 
         String previousStatus = copy.getStatus();
+
         copy.setStatus(status);
 
         Copy updatedCopy = copyRepository.save(copy);
 
-        // 🔔 Only trigger if status changed to AVAILABLE
+        // trigger reservation queue if book becomes available
         if (!"AVAILABLE".equalsIgnoreCase(previousStatus)
                 && "AVAILABLE".equalsIgnoreCase(status)) {
 
@@ -69,7 +78,9 @@ public class AdminCopyController {
         return updatedCopy;
     }
 
-    // ✅ DELETE COPY
+    // ===============================
+    // DELETE COPY
+    // ===============================
     @DeleteMapping("/{copyId}")
     public String deleteCopy(@PathVariable Long copyId) {
 
@@ -81,19 +92,39 @@ public class AdminCopyController {
         }
 
         copyRepository.delete(copy);
+
         return "Copy deleted successfully.";
     }
 
-    // ✅ GET COPIES BY BOOK
+    // ===============================
+    // GET COPIES BY BOOK
+    // ===============================
     @GetMapping("/book/{bookId}")
     public List<Copy> getCopiesByBook(@PathVariable Long bookId) {
         return copyRepository.findByBook_BookId(bookId);
     }
 
-    // =========================================
-    // 🔔 COMMON METHOD TO HANDLE RESERVATION QUEUE
-    // =========================================
+    // ===============================
+    // HANDLE RESERVATION QUEUE
+    // ===============================
     private void handleWaitingReservations(Long bookId, String bookTitle) {
+
+        boolean hasReadyReservation = reservationRepository
+                .findFirstByBook_BookIdAndStatusOrderByQueuePositionAsc(
+                        bookId,
+                        ReservationStatus.READY_FOR_PICKUP
+                )
+                .isPresent();
+        if (hasReadyReservation) {
+            return;
+        }
+
+        Copy reservableCopy = copyRepository
+                .findFirstByBook_BookIdAndStatusOrderByCopyidAsc(bookId, "AVAILABLE")
+                .orElse(null);
+        if (reservableCopy == null) {
+            return;
+        }
 
         List<Reservation> waitingReservations =
                 reservationRepository
@@ -104,18 +135,24 @@ public class AdminCopyController {
 
         if (!waitingReservations.isEmpty()) {
 
-            Reservation first = waitingReservations.get(0);
+            Reservation firstReservation = waitingReservations.get(0);
 
-            first.setStatus(ReservationStatus.READY_FOR_PICKUP);
-            first.setExpiryDate(LocalDate.now().plusDays(7));
-            reservationRepository.save(first);
+            firstReservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
+            firstReservation.setExpiryDate(LocalDate.now().plusDays(3));
+
+            reservationRepository.save(firstReservation);
+
+            reservableCopy.setStatus("RESERVED");
+            copyRepository.save(reservableCopy);
 
             notificationService.notifyUser(
-                    first.getUser(),
+                    firstReservation.getUser(),
                     "Book Available",
                     "Your reserved book '" + bookTitle +
-                            "' is now available for pickup. Please collect within 7 days."
+                            "' is now available for pickup. Please collect within 3 days."
             );
         }
+
+        reservationQueueService.recomputeQueuePositions(bookId);
     }
 }

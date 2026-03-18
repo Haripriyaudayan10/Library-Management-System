@@ -27,6 +27,10 @@ interface BookRow {
   author: string;
   genre: string;
   status: string;
+  totalCopies: number;
+  availableCopies: number;
+  issuedCopies: number;
+  reservedCopies: number;
   coverImageUrl?: string;
 }
 
@@ -54,6 +58,18 @@ interface CreatedBookResponse {
     categoryid?: number;
     name?: string;
   };
+}
+
+interface CopyItemResponse {
+  copyid: number;
+  status?: string;
+}
+
+interface BookCopyStats {
+  totalCopies: number;
+  availableCopies: number;
+  issuedCopies: number;
+  reservedCopies: number;
 }
 
 const initialAddBookForm: AddBookForm = {
@@ -117,6 +133,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const [addBookForm, setAddBookForm] = useState<AddBookForm>(initialAddBookForm);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [bookCoverMap, setBookCoverMap] = useState<Record<string, string>>({});
+  const [copyStatsMap, setCopyStatsMap] = useState<Record<number, BookCopyStats>>({});
   const [expandedBookIds, setExpandedBookIds] = useState<Record<string, boolean>>({});
   const [categoryOptions, setCategoryOptions] = useState<string[]>([
     'Fiction',
@@ -128,14 +145,27 @@ export default function Books({ searchQuery = '' }: BooksProps) {
   const bookRows = useMemo<BookRow[]>(
     () =>
       books.map((book) => ({
+        ...(copyStatsMap[book.bookId] ?? {
+          totalCopies: 0,
+          availableCopies: 0,
+          issuedCopies: 0,
+          reservedCopies: 0,
+        }),
         bookId: book.bookId,
         title: book.title,
         author: book.authorName,
         genre: book.category?.name ?? 'General',
-        status: 'Available',
+        status:
+          (copyStatsMap[book.bookId]?.issuedCopies ?? 0) > 0 &&
+          (copyStatsMap[book.bookId]?.availableCopies ?? 0) === 0 &&
+          (copyStatsMap[book.bookId]?.issuedCopies ?? 0) === (copyStatsMap[book.bookId]?.totalCopies ?? 0)
+            ? 'All Copies Issued'
+            : (copyStatsMap[book.bookId]?.availableCopies ?? 0) > 0
+            ? 'Available'
+            : 'Unavailable',
         coverImageUrl: book.coverImageUrl,
       })),
-    [books],
+    [books, copyStatsMap],
   );
 
   const bookSuggestions = useMemo<SearchSuggestionItem[]>(() => {
@@ -199,6 +229,97 @@ export default function Books({ searchQuery = '' }: BooksProps) {
       active = false;
     };
   }, [bookRows]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCopyStats = async () => {
+      if (books.length === 0) {
+        setCopyStatsMap({});
+        return;
+      }
+
+      try {
+        const responses = await Promise.all(
+          books.map(async (book) => {
+            const { data } = await api.get<CopyItemResponse[]>(
+              `/api/admin/copies/book/${book.bookId}`,
+            );
+
+            const copies = Array.isArray(data) ? data : [];
+            const totalCopies = copies.length;
+            const availableCopies = copies.filter(
+              (copy) => String(copy.status ?? '').toUpperCase() === 'AVAILABLE',
+            ).length;
+            const issuedCopies = copies.filter(
+              (copy) => String(copy.status ?? '').toUpperCase() === 'ISSUED',
+            ).length;
+            const reservedCopies = copies.filter(
+              (copy) => String(copy.status ?? '').toUpperCase() === 'RESERVED',
+            ).length;
+
+            return {
+              bookId: book.bookId,
+              stats: {
+                totalCopies,
+                availableCopies,
+                issuedCopies,
+                reservedCopies,
+              } satisfies BookCopyStats,
+            };
+          }),
+        );
+
+        if (!active) return;
+
+        const nextStatsMap = responses.reduce<Record<number, BookCopyStats>>((acc, item) => {
+          acc[item.bookId] = item.stats;
+          return acc;
+        }, {});
+
+        setCopyStatsMap(nextStatsMap);
+      } catch (error) {
+        console.error('Failed to load copy stats', error);
+      }
+    };
+
+    void loadCopyStats();
+    return () => {
+      active = false;
+    };
+  }, [books]);
+
+  const renderCopyAvailability = (book: BookRow) => {
+    const allIssued =
+      book.totalCopies > 0 &&
+      book.availableCopies === 0 &&
+      book.issuedCopies === book.totalCopies;
+
+    if (allIssued) {
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+            All Copies Issued
+          </span>
+          <span className="text-[10px] text-slate-500">
+            0/{book.totalCopies} available
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-1">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+          {book.availableCopies > 0 ? 'Available' : 'Unavailable'}
+        </span>
+        <span className="text-[10px] text-slate-500">
+          {book.availableCopies}/{book.totalCopies} available
+          {book.reservedCopies > 0 ? ` • ${book.reservedCopies} reserved` : ''}
+        </span>
+      </div>
+    );
+  };
 
   const loadLoanStats = async () => {
     const loans = await getLoans();
@@ -598,9 +719,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
                   <p className="break-words text-xs text-slate-500">{book.author}</p>
                   <p className="mt-2 text-xs text-slate-600">Genre: {book.genre}</p>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                      {book.status}
-                    </span>
+                    {renderCopyAvailability(book)}
                     <button
                       onClick={() => setBookToDelete(book)}
                       className="flex items-center gap-1 rounded bg-red-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-red-700"
@@ -670,9 +789,7 @@ export default function Books({ searchQuery = '' }: BooksProps) {
                   </td>
 
                   <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
-                      {book.status}
-                    </span>
+                    {renderCopyAvailability(book)}
                   </td>
 
                   <td className="px-2 py-2 text-xs md:px-4 md:py-3 md:text-sm">

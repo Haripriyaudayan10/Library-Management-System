@@ -10,6 +10,7 @@ public class ReservationDetailsDTO {
     private Long reservationId;
     private UUID userId;
     private String userName;
+    private String userProfileImageUrl;
     private Long bookId;
     private String bookTitle;
     private LocalDate reservationDate;

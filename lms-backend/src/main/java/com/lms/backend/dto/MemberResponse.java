@@ -12,4 +12,6 @@ public class MemberResponse {
     private UUID userid;
     private String name;
     private String email;
+    private String profileImageUrl;
+    private Boolean suspended;
 }

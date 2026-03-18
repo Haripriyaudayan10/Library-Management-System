@@ -3,8 +3,13 @@ import { BookOpen, Calendar, Clock3, IndianRupee, Layers, Users } from 'lucide-r
 
 import { AppShell } from './components/layout/AppShell';
 import type { NavItem } from './components/layout/Sidebar';
-import { type LoginResult } from './lib/auth';
-import { login as loginRequest } from './services/authService';
+import {
+  type AuthUser,
+  initializeCsrf,
+  loginWithCsrf as loginRequest,
+  logout as logoutRequest,
+  tryGetCurrentUser,
+} from './services/authService';
 
 import Login from './pages/Login';
 
@@ -33,30 +38,12 @@ type Screen =
   | 'member-profile'
   | 'member-notifications';
 
-const STORAGE_KEY = 'lms_auth_session';
-const JWT_STORAGE_KEY = 'jwt_token';
-
-function getInitialSession(): LoginResult | null {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as LoginResult;
-    if (!parsed?.role || !parsed?.token) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
 function App() {
-  const [session, setSession] = useState<LoginResult | null>(getInitialSession);
+  const [session, setSession] = useState<AuthUser | null>(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
-  const [screen, setScreen] = useState<Screen>(() => {
-    const saved = getInitialSession();
-    return saved?.role === 'MEMBER' ? 'member-dashboard' : 'admin-dashboard';
-  });
+  const [screen, setScreen] = useState<Screen>('admin-dashboard');
 
   const adminNav = useMemo<NavItem[]>(
     () => [
@@ -72,11 +59,10 @@ function App() {
 
   const memberNav = useMemo<NavItem[]>(() => [{ key: 'member-dashboard', label: 'My Dashboard', icon: Layers }], []);
 
-  const setAuthenticated = (auth: LoginResult) => {
-    localStorage.setItem(JWT_STORAGE_KEY, auth.token);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
+  const setAuthenticated = (auth: AuthUser) => {
     setSession(auth);
-    setScreen(auth.role === 'ADMIN' ? 'admin-dashboard' : 'member-dashboard');
+    const roleUpper = String(auth.role ?? '').toUpperCase();
+    setScreen(roleUpper === 'ADMIN' ? 'admin-dashboard' : 'member-dashboard');
     window.history.pushState({}, '', '/dashboard');
   };
 
@@ -88,12 +74,11 @@ function App() {
         throw new Error('Unsupported role from backend');
       }
 
-      const backend: LoginResult = {
-        token: backendData.token,
+      const backend: AuthUser = {
         userId: String(backendData.userId),
         name: backendData.name,
+        email: backendData.email,
         role: roleUpper,
-        email,
         profileImageUrl: backendData.profileImageUrl,
       };
       setAuthenticated(backend);
@@ -102,9 +87,14 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem(STORAGE_KEY);
+  const handleLogout = async () => {
+    try {
+      await logoutRequest();
+    } catch (error) {
+      console.error('Logout request failed', error);
+    }
     setSession(null);
+    setScreen('admin-dashboard');
   };
 
   const handleProfileUpdated = (patch: { name?: string; profileImageUrl?: string }) => {
@@ -115,7 +105,6 @@ function App() {
         name: patch.name ?? prev.name,
         profileImageUrl: patch.profileImageUrl ?? prev.profileImageUrl,
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
   };
@@ -134,9 +123,29 @@ function App() {
   };
 
   useEffect(() => {
+    let active = true;
+    const bootstrap = async () => {
+      try {
+        await initializeCsrf();
+        const current = await tryGetCurrentUser();
+        if (!active || !current) return;
+        setSession(current);
+        const roleUpper = String(current.role ?? '').toUpperCase();
+        setScreen(roleUpper === 'MEMBER' ? 'member-dashboard' : 'admin-dashboard');
+      } finally {
+        if (active) setIsBootstrapping(false);
+      }
+    };
+    void bootstrap();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!session || session.role !== 'MEMBER') return;
     void refreshUnreadNotifications();
-  }, [session?.role, session?.token]);
+  }, [session?.role]);
 
   useEffect(() => {
     if (!session || session.role !== 'MEMBER') return;
@@ -144,9 +153,10 @@ function App() {
       void refreshUnreadNotifications();
     }, 30000);
     return () => window.clearInterval(interval);
-  }, [session?.role, session?.token]);
+  }, [session?.role]);
 
   const renderScreen = () => {
+    if (isBootstrapping) return null;
     if (!session) return <Login onSubmit={handleLogin} />;
 
     if (session.role === 'ADMIN') {
@@ -162,7 +172,9 @@ function App() {
           user={session.name}
           role="Admin"
           profileImageUrl={session.profileImageUrl}
-          onLogout={handleLogout}
+          onLogout={() => {
+            void handleLogout();
+          }}
         >
           {screen === 'admin-dashboard' && <AdminDashboard />}
           {screen === 'admin-books' && <Books searchQuery={searchQuery} />}
@@ -187,14 +199,16 @@ function App() {
         role="Member"
         profileImageUrl={session.profileImageUrl}
         hasUnreadNotifications={hasUnreadNotifications}
-        onLogout={handleLogout}
+        onLogout={() => {
+          void handleLogout();
+        }}
         onOpenNotifications={() => {
           void refreshUnreadNotifications();
           setScreen('member-notifications');
         }}
         onOpenProfile={() => setScreen('member-profile')}
       >
-        {screen === 'member-dashboard' && <MemberDashboard />}
+        {screen === 'member-dashboard' && <MemberDashboard memberName={session.name} />}
         {screen === 'member-profile' && <Profile onProfileUpdated={handleProfileUpdated} />}
         {screen === 'member-notifications' && (
   <Notifications

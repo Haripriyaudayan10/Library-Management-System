@@ -8,10 +8,13 @@ import com.lms.backend.repository.BookRepository;
 import com.lms.backend.repository.CopyRepository;
 import com.lms.backend.repository.ReservationRepository;
 import com.lms.backend.repository.UserRepository;
+import com.lms.backend.service.ReservationQueueService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 
@@ -24,6 +27,7 @@ public class MemberReservationController {
     private final BookRepository bookRepository;
     private final CopyRepository copyRepository;
     private final UserRepository userRepository;
+    private final ReservationQueueService reservationQueueService;
 
     @PostMapping("/{bookId}")
     public String reserveBook(@PathVariable Long bookId) {
@@ -65,13 +69,18 @@ public class MemberReservationController {
         }
 
         // 4️⃣ Check if member already has active reservation
-        long userActiveReservation =
+        long userWaitingReservation =
                 reservationRepository.countByUser_UserIdAndStatus(
                         user.getUserId(),
                         ReservationStatus.WAITING
                 );
+        long userReadyReservation =
+                reservationRepository.countByUser_UserIdAndStatus(
+                        user.getUserId(),
+                        ReservationStatus.READY_FOR_PICKUP
+                );
 
-        if (userActiveReservation > 0) {
+        if ((userWaitingReservation + userReadyReservation) > 0) {
             return "You can reserve only one book at a time.";
         }
 
@@ -84,7 +93,44 @@ public class MemberReservationController {
         reservation.setQueuePosition((int) queueCount + 1);
 
         reservationRepository.save(reservation);
+        reservationQueueService.recomputeQueuePositions(bookId);
 
         return "Reservation successful. Queue position: " + reservation.getQueuePosition();
+    }
+
+    @DeleteMapping("/{reservationId}")
+    public String cancelOwnReservation(@PathVariable Long reservationId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+
+        String email = authentication.getName();
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
+
+        if (!reservation.getUser().getUserId().equals(user.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only cancel your own reservation");
+        }
+
+        if (reservation.getStatus() != ReservationStatus.WAITING) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cancellation is allowed only while reservation is in WAITING status"
+            );
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setExpiryDate(null);
+        reservationRepository.save(reservation);
+
+        reservationQueueService.recomputeQueuePositions(reservation.getBook().getBookId());
+
+        return "Reservation cancelled successfully";
     }
 }

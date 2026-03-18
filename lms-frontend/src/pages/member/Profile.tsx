@@ -48,22 +48,6 @@ export default function Profile({ onProfileUpdated }: ProfileProps) {
         name: data.name,
         profileImageUrl: data.profileImageUrl,
       });
-      const raw = localStorage.getItem('lms_auth_session');
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
-          localStorage.setItem(
-            'lms_auth_session',
-            JSON.stringify({
-              ...parsed,
-              profileImageUrl: data.profileImageUrl,
-              name: data.name ?? parsed.name,
-            }),
-          );
-        } catch {
-          // ignore session parse failures
-        }
-      }
     } catch (err) {
       console.error('Failed to load member profile', err);
     }

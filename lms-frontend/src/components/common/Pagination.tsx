@@ -47,7 +47,7 @@ export default function Pagination({
           type="button"
           className={`h-10 min-w-10 rounded-xl border px-3 text-sm font-semibold ${
             page === safeCurrent
-              ? 'border-blue-500 bg-blue-500 text-white'
+              ? 'border-teal-600 bg-teal-600 text-white'
               : 'border-slate-200 bg-white text-slate-700'
           }`}
           onClick={() => onPageChange(page)}

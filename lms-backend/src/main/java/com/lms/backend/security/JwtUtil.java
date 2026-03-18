@@ -4,6 +4,7 @@ import com.lms.backend.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -12,17 +13,26 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private final String SECRET = "mySecretKeyForLmsApplication123456789123456";
-    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    private final Key key;
+    private final long accessTokenExpiryMs;
 
-    // 🔐 Generate Token
-    public String generateToken(User user) {
+    public JwtUtil(
+            @Value("${app.auth.jwt-secret:mySecretKeyForLmsApplication123456789123456}") String secret,
+            @Value("${app.auth.access-token-minutes:15}") long accessTokenMinutes
+    ) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.accessTokenExpiryMs = accessTokenMinutes * 60_000L;
+    }
+
+    // 🔐 Generate Access Token
+    public String generateAccessToken(User user) {
+        String normalizedRole = user.getRole() == null ? "" : user.getRole().trim().toUpperCase();
         return Jwts.builder()
                 .setSubject(user.getEmail())
-                .claim("role", user.getRole())
+                .claim("role", normalizedRole)
                 .claim("userId", user.getUserId().toString())   // ✅ FIXED
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
+                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
                 .signWith(key)
                 .compact();
     }
@@ -45,7 +55,8 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody();
 
-        return claims.get("role", String.class);
+        String role = claims.get("role", String.class);
+        return role == null ? "" : role.trim().toUpperCase();
     }
 
     // 📌 Extract UserId (NEW - Recommended)

@@ -56,7 +56,11 @@ function getDueText(dueDate: string): string {
 
 
 
-export default function Dashboard() {
+interface DashboardProps {
+  memberName?: string;
+}
+
+export default function Dashboard({ memberName = 'Member' }: DashboardProps) {
 
   const [showReserveModal, setShowReserveModal] = useState(false);
 
@@ -66,9 +70,6 @@ export default function Dashboard() {
 
   const [activeLoans, setActiveLoans] = useState<MemberActiveLoan[]>([]);
   const [currentReservations, setCurrentReservations] = useState<MemberCurrentReservation[]>([]);
-
-  const [memberName, setMemberName] = useState('Member');
-
 
   // SEARCH
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,24 +106,6 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-
-    const raw = localStorage.getItem('lms_auth_session');
-
-    if (raw) {
-
-      try {
-
-        const parsed = JSON.parse(raw) as { name?: string };
-
-        setMemberName(parsed?.name || 'Member');
-
-      } catch {
-
-        setMemberName('Member');
-
-      }
-
-    }
 
     void loadDashboard();
 

@@ -7,6 +7,7 @@ import com.lms.backend.repository.NotificationRepository;
 import com.lms.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,22 +20,33 @@ public class MemberNotificationController {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    @GetMapping
-    public List<NotificationDTO> getAllNotifications() {
-
-        // Get logged-in user's email from JWT
+    private User getCurrentUser() {
         String email = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
 
-        User user = userRepository.findByEmail(email)
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @GetMapping
+    public List<NotificationDTO> getAllNotifications() {
+
+        User user = getCurrentUser();
 
         return notificationRepository
                 .findByUser_UserIdOrderByCreatedAtDesc(user.getUserId())
                 .stream()
                 .map(this::convertToDTO)
                 .toList();
+    }
+
+    @PutMapping("/read-all")
+    @Transactional
+    public String markAllAsRead() {
+        User user = getCurrentUser();
+        notificationRepository.markAllAsReadByUserId(user.getUserId());
+        return "All notifications marked as read";
     }
 
     private NotificationDTO convertToDTO(Notification notification) {

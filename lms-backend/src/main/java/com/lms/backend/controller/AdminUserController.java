@@ -3,6 +3,7 @@ package com.lms.backend.controller;
 import com.lms.backend.dto.*;
 import com.lms.backend.entity.User;
 import com.lms.backend.repository.UserRepository;
+import com.lms.backend.service.ProfileImageStorageService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,11 +24,12 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN')")
 public class AdminUserController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProfileImageStorageService profileImageStorageService;
 
     // ============================================
     // CREATE USER
@@ -43,7 +46,9 @@ public class AdminUserController {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPhoneNumber(request.getPhoneNumber());
         user.setRole("MEMBER");
+        user.setSuspended(false);
 
         userRepository.save(user);
 
@@ -51,6 +56,8 @@ public class AdminUserController {
                 .userid(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
+                .suspended(user.getSuspended())
                 .build();
     }
 
@@ -99,6 +106,8 @@ public class AdminUserController {
                         .userid(user.getUserId())
                         .name(user.getName())
                         .email(user.getEmail())
+                        .profileImageUrl(user.getProfileImageUrl())
+                        .suspended(user.getSuspended())
                         .build())
 
                 .toList();
@@ -135,6 +144,9 @@ public MemberResponse updateMember(
     if (request.getName() != null) {
         user.setName(request.getName());
     }
+    if (request.getSuspended() != null) {
+        user.setSuspended(request.getSuspended());
+    }
 
     userRepository.save(user);
 
@@ -142,8 +154,34 @@ public MemberResponse updateMember(
             .userid(user.getUserId())
             .name(user.getName())
             .email(user.getEmail())
+            .profileImageUrl(user.getProfileImageUrl())
+            .suspended(user.getSuspended())
             .build();
 }
+
+    // ============================================
+    // UPLOAD USER PROFILE IMAGE
+    // ============================================
+    @PostMapping("/{userId}/profile-image")
+    public MemberResponse uploadUserProfileImage(
+            @PathVariable UUID userId,
+            @RequestParam("file") MultipartFile file) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String fileUrl = profileImageStorageService.storeProfileImage(file);
+        user.setProfileImageUrl(fileUrl);
+        userRepository.save(user);
+
+        return MemberResponse.builder()
+                .userid(user.getUserId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
+                .suspended(user.getSuspended())
+                .build();
+    }
 
     // ============================================
     // DELETE USER

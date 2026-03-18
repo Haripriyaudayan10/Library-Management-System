@@ -3,8 +3,10 @@ package com.lms.backend.controller;
 import com.lms.backend.dto.*;
 import com.lms.backend.entity.User;
 import com.lms.backend.enums.LoanStatus;
+import com.lms.backend.enums.ReservationStatus;
 import com.lms.backend.repository.FineRepository;
 import com.lms.backend.repository.LoanRepository;
+import com.lms.backend.repository.ReservationRepository;
 import com.lms.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +25,7 @@ public class MemberDashboardController {
 
     private final LoanRepository loanRepository;
     private final FineRepository fineRepository;
+    private final ReservationRepository reservationRepository;
     private final UserRepository userRepository;
 
     @GetMapping("/dashboard")
@@ -77,6 +80,25 @@ public class MemberDashboardController {
                         .bookTitle(loan.getCopy().getBook().getTitle())
                         .author(loan.getCopy().getBook().getAuthorName())
                         .dueDate(loan.getDueDate())
+                .build())
+                .collect(Collectors.toList());
+
+        // ==============================
+        // 🗂 Current Reservations
+        // ==============================
+        List<CurrentReservationResponse> currentReservations = reservationRepository
+                .findByUser_UserId(userId)
+                .stream()
+                .filter(reservation ->
+                        reservation.getStatus() == ReservationStatus.WAITING ||
+                        reservation.getStatus() == ReservationStatus.READY_FOR_PICKUP)
+                .map(reservation -> CurrentReservationResponse.builder()
+                        .reservationId(reservation.getReservationId())
+                        .bookTitle(reservation.getBook().getTitle())
+                        .author(reservation.getBook().getAuthorName())
+                        .status(reservation.getStatus().name())
+                        .queuePosition(reservation.getQueuePosition())
+                        .reservationDate(reservation.getReservationDate())
                         .build())
                 .collect(Collectors.toList());
 
@@ -88,6 +110,7 @@ public class MemberDashboardController {
                 .booksReturned(returned)
                 .pendingFine(pendingFine)
                 .activeLoans(activeLoans)
+                .currentReservations(currentReservations)
                 .fines(fineResponses)
                 .build();
     }

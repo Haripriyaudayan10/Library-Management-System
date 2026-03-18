@@ -6,7 +6,6 @@ interface CoverLookupItem {
 }
 
 const FALLBACK_COVER = '/default-book.svg';
-const STORAGE_KEY = 'lms_book_cover_cache_v1';
 const memoryCache = new Map<string, string>();
 const inFlightRequests = new Map<string, Promise<string>>();
 
@@ -18,25 +17,6 @@ function normalizeUrl(url?: string | null): string {
 
 function cacheKey(title: string, author?: string): string {
   return `${title.trim().toLowerCase()}::${(author ?? '').trim().toLowerCase()}`;
-}
-
-function readStorage(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, string>;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeStorage(next: Record<string, string>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Ignore storage failures in private mode or quota limits.
-  }
 }
 
 async function fetchGoogleBooksCover(title: string, author?: string): Promise<string> {
@@ -86,12 +66,6 @@ export async function resolveSingleBookCover(title: string, author?: string, exi
   const fromMemory = memoryCache.get(key);
   if (fromMemory) return fromMemory;
 
-  const storage = readStorage();
-  if (storage[key]) {
-    memoryCache.set(key, storage[key]);
-    return storage[key];
-  }
-
   if (inFlightRequests.has(key)) {
     return inFlightRequests.get(key) as Promise<string>;
   }
@@ -99,7 +73,6 @@ export async function resolveSingleBookCover(title: string, author?: string, exi
   const request = (async () => {
     const resolved = (await fetchGoogleBooksCover(title, author)) || FALLBACK_COVER;
     memoryCache.set(key, resolved);
-    writeStorage({ ...storage, [key]: resolved });
     inFlightRequests.delete(key);
     return resolved;
   })();

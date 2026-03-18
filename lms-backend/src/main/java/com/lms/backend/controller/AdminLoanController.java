@@ -3,23 +3,29 @@ package com.lms.backend.controller;
 import com.lms.backend.entity.*;
 import com.lms.backend.enums.LoanStatus;
 import com.lms.backend.enums.ReservationStatus;
+import com.lms.backend.service.NotificationService;
+import com.lms.backend.service.ReservationQueueService;
 import com.lms.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/loans")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN')")
 public class AdminLoanController {
 
     private final LoanRepository loanRepository;
@@ -27,6 +33,8 @@ public class AdminLoanController {
     private final UserRepository userRepository;
     private final FineRepository fineRepository;
     private final ReservationRepository reservationRepository;
+    private final NotificationService notificationService;
+    private final ReservationQueueService reservationQueueService;
 
     // =====================================================
     // CREATE LOAN (ISSUE BOOK)
@@ -39,18 +47,55 @@ public class AdminLoanController {
         Copy copy = copyRepository.findById(copyId)
                 .orElseThrow(() -> new RuntimeException("Copy not found"));
 
-        if (!"AVAILABLE".equalsIgnoreCase(copy.getStatus())) {
+        String copyStatus = copy.getStatus() == null ? "" : copy.getStatus().toUpperCase();
+        if (!"AVAILABLE".equals(copyStatus) && !"RESERVED".equals(copyStatus)) {
             throw new RuntimeException("Copy not available");
         }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        Reservation reservedFor = reservationRepository
+                .findFirstByBook_BookIdAndStatusOrderByQueuePositionAsc(
+                        copy.getBook().getBookId(),
+                        ReservationStatus.READY_FOR_PICKUP)
+                .orElse(null);
+
+        if (reservedFor != null) {
+            if (!reservedFor.getUser().getUserId().equals(userId)) {
+                throw new RuntimeException("This copy is reserved for another member pickup.");
+            }
+
+            boolean hasReservedCopy = copyRepository
+                    .findFirstByBook_BookIdAndStatusOrderByCopyidAsc(
+                            copy.getBook().getBookId(),
+                            "RESERVED"
+                    )
+                    .isPresent();
+
+            if (hasReservedCopy && !"RESERVED".equals(copyStatus)) {
+                throw new RuntimeException("Please issue the reserved copy for this ready pickup.");
+            }
+        } else if ("RESERVED".equals(copyStatus)) {
+            throw new RuntimeException("This copy is currently reserved and cannot be issued.");
+        }
+
         long activeLoans =
                 loanRepository.countByUser_UserIdAndStatus(userId, LoanStatus.ACTIVE);
 
         if (activeLoans >= 3) {
-            throw new RuntimeException("User already has 3 active books.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User already has 3 active books.");
+        }
+
+        boolean hasUnpaidFine = fineRepository.findByLoan_User_UserId(userId)
+                .stream()
+                .anyMatch(fine -> !fine.isPaid());
+
+        if (hasUnpaidFine) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Member has unpaid fines. Clear all due fines before issuing a new book."
+            );
         }
 
         copy.setStatus("ISSUED");
@@ -63,7 +108,44 @@ public class AdminLoanController {
         loan.setDueDate(LocalDate.now().plusDays(14));
         loan.setStatus(LoanStatus.ACTIVE);
 
+        if (reservedFor != null) {
+            reservedFor.setStatus(ReservationStatus.COMPLETED);
+            reservedFor.setExpiryDate(null);
+            reservationRepository.save(reservedFor);
+            reservationQueueService.recomputeQueuePositions(copy.getBook().getBookId());
+        }
+
         return loanRepository.save(loan);
+    }
+
+    @GetMapping("/eligible-copies")
+    public List<Map<String, Object>> getEligibleCopies(
+            @RequestParam Long bookId,
+            @RequestParam(required = false) UUID userId) {
+
+        List<Copy> availableCopies = copyRepository.findByBook_BookIdAndStatus(bookId, "AVAILABLE");
+        List<Copy> reservedCopies = copyRepository.findByBook_BookIdAndStatus(bookId, "RESERVED");
+
+        Reservation readyReservation = reservationRepository
+                .findFirstByBook_BookIdAndStatusOrderByQueuePositionAsc(
+                        bookId,
+                        ReservationStatus.READY_FOR_PICKUP)
+                .orElse(null);
+
+        List<Copy> eligible;
+        if (readyReservation == null) {
+            eligible = availableCopies;
+        } else if (userId != null && readyReservation.getUser().getUserId().equals(userId)) {
+            eligible = reservedCopies.isEmpty() ? availableCopies : reservedCopies;
+        } else {
+            eligible = new ArrayList<>();
+        }
+
+        return eligible.stream()
+                .map(copy -> Map.<String, Object>of(
+                        "copyid", copy.getCopyid(),
+                        "status", copy.getStatus()))
+                .collect(Collectors.toList());
     }
 
     // =====================================================
@@ -96,11 +178,43 @@ public class AdminLoanController {
             fine.setAmount(fineAmount);
             fine.setPaid(false);
             fineRepository.save(fine);
+
+            notificationService.notifyUser(
+                    loan.getUser(),
+                    "Library Fine Issued",
+                    "A fine of ₹" + fineAmount + " was issued for late return of \"" +
+                            loan.getCopy().getBook().getTitle() + "\"."
+            );
         }
 
         Copy copy = loan.getCopy();
         copy.setStatus("AVAILABLE");
         copyRepository.save(copy);
+
+        // If any member is waiting for this book, promote the first in queue.
+        List<Reservation> waitingReservations =
+                reservationRepository.findByBook_BookIdAndStatusOrderByQueuePositionAsc(
+                        copy.getBook().getBookId(),
+                        ReservationStatus.WAITING
+                );
+        if (!waitingReservations.isEmpty()) {
+            Reservation nextReservation = waitingReservations.get(0);
+            nextReservation.setStatus(ReservationStatus.READY_FOR_PICKUP);
+            nextReservation.setExpiryDate(LocalDate.now().plusDays(3));
+            reservationRepository.save(nextReservation);
+
+            copy.setStatus("RESERVED");
+            copyRepository.save(copy);
+
+            notificationService.notifyUser(
+                    nextReservation.getUser(),
+                    "Book Ready for Pickup",
+                    "\"" + nextReservation.getBook().getTitle() +
+                            "\" is now available. Please pick it up within 3 days."
+            );
+        }
+
+        reservationQueueService.recomputeQueuePositions(copy.getBook().getBookId());
 
         return loanRepository.save(loan);
     }

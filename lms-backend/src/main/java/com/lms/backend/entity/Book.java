@@ -12,14 +12,17 @@ public class Book {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "bookid")   // keep DB column same
+    @Column(name = "bookid")
     private Long bookId;
 
     @Column(nullable = false)
     private String title;
 
-    @Column(name = "authorname", nullable = false)   // map DB column
-    private String authorName;   // ✅ camelCase field
+    @Column(name = "authorname", nullable = false)
+    private String authorName;
+
+    @Column(name = "cover_image_url")
+private String coverImageUrl;
 
     @ManyToOne
     @JoinColumn(name = "categoryid", nullable = false)

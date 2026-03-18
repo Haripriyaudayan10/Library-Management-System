@@ -3,6 +3,8 @@ package com.lms.backend.repository;
 import com.lms.backend.entity.Loan;
 import com.lms.backend.enums.LoanStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,6 +54,8 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     long countByStatusAndDueDateBefore(LoanStatus status, LocalDate date);
 
+    List<Loan> findByStatusInAndDueDate(List<LoanStatus> statuses, LocalDate dueDate);
+
 
 
     /* ==============================
@@ -60,4 +64,16 @@ public interface LoanRepository extends JpaRepository<Loan, Long> {
 
     // Check if a specific copy already has active loan
     List<Loan> findByCopy_CopyidAndStatus(Long copyid, LoanStatus status);
+
+    // Block book deletion until all loan rows are RETURNED
+    @Query("""
+            select count(l) > 0
+            from Loan l
+            where l.copy.book.bookId = :bookId
+              and (l.status is null or l.status <> :returnedStatus)
+            """)
+    boolean existsNonReturnedLoansForBook(
+            @Param("bookId") Long bookId,
+            @Param("returnedStatus") LoanStatus returnedStatus
+    );
 }

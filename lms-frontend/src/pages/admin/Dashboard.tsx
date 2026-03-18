@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { CircleDollarSign, Clock3 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatCard } from '../../components/ui/StatCard';
-import { getAdminDashboard, type AdminDashboardStats } from '../../services/dashboardService';
 import api from '../../services/api';
 import { getFines, type FineItem } from '../../services/fineService';
 
@@ -41,15 +40,6 @@ function formatDate(value?: string): string {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState<AdminDashboardStats>({
-    totalBooks: 0,
-    totalCopies: 0,
-    availableCopies: 0,
-    totalMembers: 0,
-    activeLoans: 0,
-    waitingReservations: 0,
-  });
-
   const [loans, setLoans] = useState<LoanItem[]>([]);
   const [books, setBooks] = useState<DashboardBook[]>([]);
   const [fines, setFines] = useState<FineItem[]>([]);
@@ -59,14 +49,11 @@ export default function Dashboard() {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [dashboardData, loansResponse, booksResponse, finesData] = await Promise.all([
-          getAdminDashboard(),
+        const [loansResponse, booksResponse, finesData] = await Promise.all([
           api.get('/api/admin/loans'),
           api.get('/api/admin/books'),
           getFines(),
         ]);
-
-        setStats(dashboardData);
 
         const loansData = Array.isArray(loansResponse.data)
           ? loansResponse.data

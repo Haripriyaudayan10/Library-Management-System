@@ -1,13 +1,16 @@
 package com.lms.backend.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.lms.backend.entity.Book;
 import com.lms.backend.entity.Category;
+import com.lms.backend.enums.LoanStatus;
 import com.lms.backend.repository.BookRepository;
 import com.lms.backend.repository.CategoryRepository;
 import com.lms.backend.repository.CopyRepository;
+import com.lms.backend.repository.LoanRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -16,7 +19,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/api/admin/books")
@@ -26,6 +32,41 @@ public class AdminBookController {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
     private final CopyRepository copyRepository;
+    private final LoanRepository loanRepository;
+
+    // ======================================================
+    // FETCH BOOK COVER FROM OPENLIBRARY
+    // ======================================================
+    private String fetchBookCover(String title) {
+
+        try {
+
+            String url = "https://openlibrary.org/search.json?title=" + title;
+
+            RestTemplate restTemplate = new RestTemplate();
+
+            Map response = restTemplate.getForObject(url, Map.class);
+
+            List docs = (List) response.get("docs");
+
+            if (docs != null && !docs.isEmpty()) {
+
+                Map firstBook = (Map) docs.get(0);
+
+                if (firstBook.get("cover_i") != null) {
+
+                    Integer coverId = (Integer) firstBook.get("cover_i");
+
+                    return "https://covers.openlibrary.org/b/id/" + coverId + "-L.jpg";
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println("Cover fetch failed");
+        }
+
+        return null;
+    }
 
     // ======================================================
     // GET (FILTER + PAGINATION)
@@ -96,6 +137,10 @@ public class AdminBookController {
 
         book.setCategory(category);
 
+        // FETCH COVER IMAGE AUTOMATICALLY
+        String coverUrl = fetchBookCover(book.getTitle());
+        book.setCoverImageUrl(coverUrl);
+
         return bookRepository.save(book);
     }
 
@@ -137,6 +182,10 @@ public class AdminBookController {
 
         book.setCategory(category);
 
+        // UPDATE COVER WHEN TITLE CHANGES
+        String coverUrl = fetchBookCover(updatedBook.getTitle());
+        book.setCoverImageUrl(coverUrl);
+
         return bookRepository.save(book);
     }
 
@@ -162,6 +211,18 @@ public class AdminBookController {
 
         if (!bookRepository.existsById(bookId)) {
             throw new RuntimeException("Book not found");
+        }
+
+        boolean hasNonReturnedLoans = loanRepository.existsNonReturnedLoansForBook(
+                bookId,
+                LoanStatus.RETURNED
+        );
+
+        if (hasNonReturnedLoans) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Cannot delete book. Delete is allowed only after all loans for this book are returned."
+            );
         }
 
         bookRepository.deleteById(bookId);

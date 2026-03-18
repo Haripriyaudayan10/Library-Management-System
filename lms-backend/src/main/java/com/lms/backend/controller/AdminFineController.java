@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin/fines")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('ADMIN')")
+@PreAuthorize("hasAnyAuthority('ADMIN','ROLE_ADMIN')")
 public class AdminFineController {
 
     private final FineRepository fineRepository;
